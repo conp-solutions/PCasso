@@ -6,15 +6,16 @@
 
 // Davide> This file simply contains some useful things
 
-namespace davide{
-  
-  template <class T>
-    inline std::string to_string (const T& t)
-    {
-      std::stringstream ss;
-      ss << t;
-      return ss.str();
-    }
+namespace davide
+{
+
+template <class T>
+inline std::string to_string(const T& t)
+{
+    std::stringstream ss;
+    ss << t;
+    return ss.str();
+}
 }
 
 #endif

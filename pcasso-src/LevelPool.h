@@ -1,7 +1,7 @@
 /**
-   Davide> 
+   Davide>
    A LevelPool is a pool of clauses. It is identified by its position in the
-   PartitionTree. 
+   PartitionTree.
  **/
 
 #ifndef LEVEL_POOL_H
@@ -25,58 +25,64 @@
 using namespace Minisat;
 using namespace std;
 
-namespace davide{
+namespace davide
+{
 
-class LevelPool{
-//	bool remove;
-	string code;
-	bool full;
-	int endP;
+class LevelPool
+{
+//  bool remove;
+    string code;
+    bool full;
+    int endP;
 
-public:
+  public:
 
-	LevelPool(int _max_size);
+    LevelPool(int _max_size);
 
-	RWLock levelPoolLock;
+    RWLock levelPoolLock;
 
-	int writeP;     // index for whatever clause
-	int max_size;
+    int writeP;     // index for whatever clause
+    int max_size;
 
-	void dumpClauses( const char* filename){
+    void dumpClauses(const char* filename)
+    {
 
-		//    	fstream s;
-		//    	s.open(filename, fstream::out);
-		//    	s << "c [POOL] all collected shared clauses begin: " << endl;
-		//    	for( unsigned int i = 0 ; i < shared_clauses.size(); ++i )
-		//    	{
-		//    		clause& c = shared_clauses[i];
-		//    		for (unsigned int j = 0; j < c.size; j++)
-		//    			s << (sign(c.lits[j]) ? "-" : "") << var(c.lits[j])+1 << " ";
-		//    		s << "0\n";
-		//    	}
-		//    	s << "c [POOL] all collected shared clauses end: " << endl;
-		//    	s.close();
-	}
+        //      fstream s;
+        //      s.open(filename, fstream::out);
+        //      s << "c [POOL] all collected shared clauses begin: " << endl;
+        //      for( unsigned int i = 0 ; i < shared_clauses.size(); ++i )
+        //      {
+        //          clause& c = shared_clauses[i];
+        //          for (unsigned int j = 0; j < c.size; j++)
+        //              s << (sign(c.lits[j]) ? "-" : "") << var(c.lits[j])+1 << " ";
+        //          s << "0\n";
+        //      }
+        //      s << "c [POOL] all collected shared clauses end: " << endl;
+        //      s.close();
+    }
 
-	bool duplicate( const vec<Lit>& c );
-	bool add_shared(vec<Lit>& lits, unsigned int nodeID, bool disable_dupl_removal=false, bool disable_dupl_check=false);
+    bool duplicate(const vec<Lit>& c);
+    bool add_shared(vec<Lit>& lits, unsigned int nodeID, bool disable_dupl_removal = false, bool disable_dupl_check = false);
 
 
-	/** Reads positions until the writeP position **/
-	void getChunk(int readP, vec<Lit>& chunk);
+    /** Reads positions until the writeP position **/
+    void getChunk(int readP, vec<Lit>& chunk);
 
-public:
-	inline string getCode(void) const{
-		return code;
-	}
+  public:
+    inline string getCode(void) const
+    {
+        return code;
+    }
 
-	inline void setCode(const string& _code){
-		code = _code;
-	}
-	inline bool isFull() {
-		return full;
-	}
-	vec<Lit> shared_clauses;
+    inline void setCode(const string& _code)
+    {
+        code = _code;
+    }
+    inline bool isFull()
+    {
+        return full;
+    }
+    vec<Lit> shared_clauses;
 };
 }
 
