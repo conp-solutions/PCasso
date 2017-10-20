@@ -47,6 +47,14 @@ static IntOption  cleaning_delay("SPLITTER", "clean-delay", "Cleaning delay for 
 static IntOption opt_shared_clean_delay("SPLITTER + SHARING", "shclean-delay", "Keep the shared clause for a certain number of cleanings\n", 1, IntRange(0, 1));
 static BoolOption    opt_lbd_minimization("SPLITTER + SHARING", "lbd-min", "Enable lbd minimization.\n", true);
 static BoolOption opt_simulate_portfolio("SPLITTER + SHARING", "sim-port", "Enable Simulation of Portfolio.\n", true);
+
+static BoolOption opt_lcm("SPLITTER + LCM", "lcm",                  "perform LCM", false);
+static IntOption opt_lcm_style("SPLITTER + LCM", "lcm-style",       "Use vivifaction for learned clauses (1=plain vivi, 2=vivi+analyze, 3=vivi+unionanalyze, 4+reverse, >4 X-4, and-reverse)", 18, IntRange(0, 24));
+static IntOption opt_lcm_freq("SPLITTER + LCM", "lcm-freq",         "Use LCM after every X reduceDB calls", 2, IntRange(1, INT32_MAX));
+static IntOption opt_lcm_min_size("SPLITTER + LCM", "lcm-min-size", "Apply LCM only to clauses that have at least X literals", 1, IntRange(1, INT32_MAX));
+static BoolOption opt_lcm_full("SPLITTER + LCM", "lcm-full",        "at all restarts, always on all learned clauses #NoAutoT", false);
+static IntOption opt_lcm_dbg("SPLITTER + LCM", "lcm-dbg",           "debug LCM computation #NoAutoT", 0, IntRange(0, 5));
+
 //=================================================================================================
 
 SolverPT::SolverPT(CoreConfig& config) :
@@ -101,6 +109,9 @@ SolverPT::SolverPT(CoreConfig& config) :
     , n_acquired_clausesID(0)
     , n_tot_forced_restarts_ID(0)
     , n_tot_reduceDB_calls_ID(0)
+    // LCM
+    , performSimplificationNext(0)
+    , nbLCM(0), nbLitsLCM(0), nbConflLits(0), nbLCMattempts(0), nbLCMsuccess(0), npLCMimpDrop(0), nbRound1Lits(0), nbRound2Lits(0), nbLCMfalsified(0)
 {
     // Davide> Statistics
     if (!disable_stats) {
@@ -1016,6 +1027,358 @@ CRef SolverPT::propagate()
     return confl;
 }
 
+struct reduceDB_lt {
+    ClauseAllocator& ca;
+    reduceDB_lt(ClauseAllocator& ca_) : ca(ca_) {}
+    bool operator()(CRef x, CRef y)
+    {
+
+        // Main criteria... Like in MiniSat we keep all binary clauses
+        if (ca[x].size() > 2 && ca[y].size() == 2) { return 1; }
+
+        if (ca[y].size() > 2 && ca[x].size() == 2) { return 0; }
+        if (ca[x].size() == 2 && ca[y].size() == 2) { return 0; }
+
+        // Second one  based on literal block distance
+        if (ca[x].lbd() > ca[y].lbd()) { return 1; }
+        if (ca[x].lbd() < ca[y].lbd()) { return 0; }
+
+
+        // Finally we can use old activity or size, we choose the last one
+        return ca[x].activity() < ca[y].activity();
+        //return x->size() < y->size();
+
+        //return ca[x].size() > 2 && (ca[y].size() == 2 || ca[x].activity() < ca[y].activity()); }
+    }
+};
+
+int SolverPT::simplifyLearntLCM(Clause& c, int vivificationConfig)
+{
+    int roundLits[3];
+    int round = 0;
+    roundLits[0] = c.size();
+    while (vivificationConfig > 0 && c.size() > 1) {
+        bool minimized = false;
+        round ++;
+        const int roundViviConfig = vivificationConfig % 5;
+        vivificationConfig /= 5;
+
+        assert(round <= 2 && "have at most 2 rounds");
+        // if this round should not perform any simplification, jump to the next round (and work with reversed clause)
+        if (roundViviConfig == 0) {roundLits[round] = c.size(); continue; }
+
+        if (round == 2) { // reverse clause in second iteration!
+            c.reverse();
+        }
+
+        Lit impliedLit = lit_Undef; // literal that is implied by the negation of some other literals
+        int i = 0, j = 0, maxLevel = 0;
+        CRef confl = CRef_Undef;
+
+        assert(decisionLevel() == 0 && "LCM has to be performed on level 0");
+        const int inputSize = c.size();
+        for (i = 0, j = 0; i < c.size(); i++) {
+            if (value(c[i]) == l_Undef) {
+                newDecisionLevel();
+                uncheckedEnqueue(~c[i]);
+                c[j++] = c[i];
+                confl = propagate();
+                if (confl != CRef_Undef) {
+                    // F \bigvee \neg l_1 \land ... \land \neg l_{i-1} -> \bot \equiv F \land (l_1 \lor ... \lor l_{i-1})
+                    // or something similar, based on conflict analysis with the clause we just got as conflict
+                    break;
+                }
+            } else if (value(c[i]) == l_True) {
+                if (roundViviConfig > 2) { // <- enable only in case conflict resultion is performed below. the actual break does not work!
+                    impliedLit = c[i]; // store to be able to use it for conflict analysis afterwards
+                    c[j++] = c[i];  // not necessary, as will be resolved out later anyways (or use as basis for conflict)?
+
+                    // F \bigvee \neg l_1 \land ... \land \neg l_{i-1} -> \l_i \equiv
+                    // F \bigvee \neg l_1 \land ... \land \neg l_{i-1} \land \neg l_i -> \bot, with confl = reason(l_i)
+                    confl = reason(var(c[i]));
+                    assert((confl != CRef_Undef) && "the assignment to the literal has to have a reason");
+                    break;
+                } else {
+                    // keep the satisfied literal, because moving it away can fail!
+                    c[j++] = c[i];
+                    break; // this part until c[j] is subsumed by other a combination of other clauses in the formula (seems to be hyper-resolution to get the subsumed clause)
+                }
+            } else {
+                assert(value(c[i]) == l_False && "there are only 3 case for a truth assignment");
+                // F \land (-l1,...,-lk} -> {-li}
+            }
+        }
+
+        c.shrink(c.size() - j);
+
+        if (roundViviConfig > 1 && (confl != CRef_Undef)) {
+            conflict.clear(); // use the conflict vector, as it's a class member. make sure to clear it afterwards again!
+            analyzeFinal(confl, conflict, impliedLit);
+            if (impliedLit != lit_Undef) {
+                conflict.push(impliedLit); // add the final literal of the clause here, has to be done after analyzeFinal!
+            }
+            if (conflict.size() < c.size()) {
+                nbConflLits += c.size() - conflict.size();
+                assert(c.size() >= conflict.size() && "shrink should not increase size");
+                c.shrink(c.size() - conflict.size()); // shrink clause!
+                for (int k = 0; k < c.size(); ++ k) { c[k] = conflict[k]; } // and actually use the literals of conflict
+            } else if (false && impliedLit != lit_Undef && c.last() == impliedLit && j == c.size()) { // this is no valid operation, unless we actually did not shrink c above!
+                // in case analysis did not result in removing a literal from c, at least drop the impliedLit as in usual vivification
+                assert(c[j - 1] == impliedLit && c.size() >= j && "until here, the position of impliedLit should be fixed");
+                c[j - 1] = c.last(); // drop the literal "impliedLit" from the clause
+                c.pop();
+                npLCMimpDrop ++;
+            }
+            conflict.clear();
+
+            // analyzeFinal will place the literals in reverse order in c. Make sure we can convert this back
+            if (roundViviConfig > 3) { c.reverse(); }
+        }
+
+        if (c.size() < inputSize) {
+            permDiff.nextStep();
+            unsigned  int nblevels = 0;
+            for (int i = 0; i < c.size(); i++) {
+                int l = level(var(c[i]));
+                if (! permDiff.isCurrentStep(l)) {
+                    permDiff.setCurrentStep(l);
+                    nblevels++;
+                }
+            }
+
+            if (nblevels < c.lbd()) {
+                c.setLBD(nblevels);
+            }
+            minimized = true;
+        }
+        cancelUntil(0);
+
+        if (round == 2) { // reverse clause in second iteration!
+            c.reverse();
+        }
+        roundLits[round] = c.size();
+
+        if (!minimized) { break; } // no need for a second iteration if no minimization was achieved in the first iteration
+    }
+
+    nbRound1Lits += roundLits[0] - roundLits[1];
+    if (round > 1) { nbRound2Lits += roundLits[1] - roundLits[2]; }
+
+    return c.lbd();
+}
+
+bool SolverPT::simplifyClause_viviLCM(const CRef cr, int LCMconfig, bool fullySimplify)
+{
+    assert(qhead == trail.size() && "make sure, we are working on level 0 and the PROOF is up to date!");
+    Clause& c = ca[cr];
+    bool keepClause = false;
+    bool false_lit = false, sat = false;
+    // in the first 2 positions, there should not be a falsified literal after propagation!
+    int i = 2, j = 2;
+
+    if (c.size() > 2) {
+        if (value(c[0]) == l_True || value(c[1]) == l_True) {
+            sat = true;
+        } else {
+            for (i = 2; i < c.size(); i++) {
+                if (value(c[i]) == l_True) {
+                    sat = true;
+                    break;
+                }
+            }
+            if (!sat) {
+                for (i = 2; i < c.size(); i++) {
+                    if (value(c[i]) != l_False) {
+                        c[j++] = c[i]; // TODO FIXME: has to end up in drat proof!
+                        if (value(c[i]) == l_True) {
+                            sat = true;
+                            break;
+                        }
+                    } else {
+                        ;
+                    }
+                }
+                nbLCMfalsified += (i - j);
+                c.shrink(i - j);
+            }
+        }
+        // a clause might become satisfiable during the analysis. remove such a clause!
+        if (sat) {
+            removeClause(cr, true); // this will also delete the clause from the DRAT proof!
+            return false; // drop the clause!
+        }
+    } else {
+        if (value(c[0]) == l_True || value(c[1]) == l_True) {
+            return true; // keep satisfied binary clauses, and do not continue with these clauses
+        }
+    }
+
+    if (!opt_lcm_full && !fullySimplify) { // use efficiency filters?
+        // if clause is in first half of sorted learned clauses, or has been processed in the past, ignore it
+        return true;
+    }
+
+    int oldSize = c.size();
+    detachClause(cr, true); // expensive, hence perform as late as possible
+
+    nbLCMattempts ++;
+    // simplifying the clause does not change it's memory location, hence c is still valid afterwards
+    int newLBD = simplifyLearntLCM(c, LCMconfig);
+    nbLitsLCM += oldSize - c.size();
+    nbLCMsuccess = oldSize > c.size() ? nbLCMsuccess + 1 : nbLCMsuccess;
+
+    // add clause back to the data structures
+    if (c.size() > 1) {
+        attachClause(cr);
+        keepClause = true;
+
+        if (c.learnt() && c.size() < oldSize) { // re-calculate LBD for the clause, if it became smaller
+            if (newLBD < c.lbd()) {
+                c.setLBD(newLBD);
+            }
+        }
+
+        c.setLcmSimplified();
+    } else if (c.size() == 1) {
+        uncheckedEnqueue(c[0]); // this clause is already added to the proof
+        int breforeTrail = trail.size();
+        int beforePropTopLevelLits = trail.size();
+        if (propagate() != CRef_Undef) {
+            ok = false;
+            return false;
+        }
+        // free clause, as it's satisfiable now
+        c.mark(1);
+        ca.free(cr);
+    } else {
+        ok = false;
+    }
+    return keepClause;
+}
+
+bool SolverPT::simplifyLCM()
+{
+    /* some notes on theory:
+     imply a negative literal:
+
+    f, (l1 lm)
+    f, -l1, ..., -le -> -lf
+    f, -l1, ..., -le, -lg ... -lm -> -lf
+
+    f, -l1, ..., -le, -lg ... -lm, lf -> \bot
+    f -> l1, ...,le, -lf, lg, ... lm
+    f -> C \setminus lf
+    f,C \equiv f, C \setminus lf
+
+    imply a positive literal:
+
+    f, (l1 lm)
+    f, -l1, ..., -le -> lf
+    f, -l1, ..., -le, -lf -> lf \land -lf -> \bot
+    f -> (l1, ..., le, lf)
+    f,C \equiv f, (l1, ..., le, lf) -> subsume! == shrink case
+
+    conflict:
+
+    f,D, -l1, ..., -lf -> -D
+
+    f,D \equiv f,D,(l1,...,lf), i.e. f,D \to (l1,...,lf)? (yes, see the above)
+
+    f, -l1, ..., -le, -lf -> \bot
+    f -> l1, ...,le, -lf, lg, ... lm
+    f -> C \setminus lf
+     * */
+
+    assert(qhead == trail.size() && "make sure we are in a good state before LCM");
+
+    // make sure we do not miss something
+    if (!ok || propagate() != CRef_Undef) {
+        return ok = false;
+    }
+
+    MethodClock lcmMethodClock(LCMTime);  // measure the time for the remainder of this function in the given clock
+
+    nbLCM ++;
+    assert(decisionLevel() == 0 && "run learned clause minimization only on level 0");
+    removeSatisfied(clauses); // TODO: test whether actually necessary when being executed "right after" reduceDB()
+    watches.cleanAll();
+
+    int ci, cj;
+    for (ci = 0, cj = 0; ci < learnts.size(); ci++) {
+        const CRef cr = learnts[ci];
+        Clause& c = ca[cr];
+        if (c.mark()) { continue; } // this clause can be dropped
+        if (c.size() < opt_lcm_min_size) {
+            // do not look at clauses that have less than the given amount of literals
+            learnts[cj++] = learnts[ci];
+            continue;
+        }
+
+        bool keep = simplifyClause_viviLCM(cr, opt_lcm_style, ! c.wasLcmSimplified() && ci >= learnts.size() / 2);  // only run full LCM on new good clauses
+        if (keep) { learnts[cj++] = learnts[ci]; }
+        if (!ok) { break; } // stop in case we found an empty clause
+    }
+    // fill gaps unneeded space
+    learnts.shrink(ci - cj);
+
+
+    checkGarbage();
+    return ok;
+}
+
+
+void SolverPT::analyzeFinal(const CRef& conflictingClause, vec< Lit >& out_conflict, const Lit otherLit)
+{
+    out_conflict.clear();
+
+    if (decisionLevel() == 0) {
+        return;
+    }
+
+
+    // saw all literals of this clause (if they are not top level)
+    const Clause& c = ca[conflictingClause];
+    for (int i = 0 ; i < c.size(); ++ i) {
+        if (level(var(c[i])) > 0) {
+            varFlags[var(c[i])].seen = 1;
+        }
+    }
+
+
+    const int minIndex = trail_lim.size() < 1 ? 0 : trail_lim[0];
+    for (int i = trail.size() - 1; i >= minIndex; i--) {
+        Var x = var(trail[i]);
+        if (varFlags[x].seen) {
+
+            {
+                if (reason(x) == CRef_Undef) {
+                    assert(level(x) > 0);
+                    out_conflict.push(~trail[i]);
+                } else {
+                    Clause& c = ca[ reason(x) ];
+                    // Bug in case of assumptions due to special data structures for Binary.
+                    // Many thanks to Sam Bayless (sbayless@cs.ubc.ca) for discover this bug.
+                    for (int j = ((c.size() == 2) ? 0 : 1); j < c.size(); j++)
+                        if (level(var(c[j])) > 0) {
+                            varFlags[var(c[j])].seen = 1;
+                        }
+                }
+            }
+            varFlags[x].seen = 0;
+        }
+    }
+
+    {
+        // saw all literals of this clause (if they are not top level)
+        const Clause& c = ca[conflictingClause];
+        for (int i = 0 ; i < c.size(); ++ i) {
+            if (level(var(c[i])) > 0) {
+                varFlags[var(c[i])].seen = 0;
+            }
+        }
+    }
+}
+
 /*_________________________________________________________________________________________________
 |
 |  search : (nof_conflicts : int) (params : const SearchParams&)  ->  [lbool]
@@ -1050,6 +1413,18 @@ lbool SolverPT::search(int nof_conflicts)
     if (opt_pull_learnts_interval == 0) {
         pull_learnts(starts);
         if (!ok) { return l_False; }
+    }
+
+    // simplify
+    if (opt_lcm_full || (opt_lcm_style > 0 && performSimplificationNext % opt_lcm_freq == 0)) {
+        // from time to time we have to interfere with partial restarts, but LCM overrules, to be able to run once in a while
+        if (decisionLevel() > 0) {
+            cancelUntil(0);
+        }
+        performSimplificationNext = 0;
+        sort(learnts, reduceDB_lt(ca));
+        if (!simplifyLCM()) { return l_False; }
+        performSimplificationNext = 0;
     }
 
     for (;;) {
@@ -1165,6 +1540,8 @@ lbool SolverPT::search(int nof_conflicts)
                 curRestart = (conflicts / nbclausesbeforereduce) + 1;
                 reduceDB();
                 nbclausesbeforereduce += incReduceDB;
+
+                if (opt_lcm) { performSimplificationNext = 1; } // in case LCM is activated, after clause reduction, performing one more analysis of clauses is ok
             }
 
             Lit next = lit_Undef;
@@ -1175,7 +1552,7 @@ lbool SolverPT::search(int nof_conflicts)
                     // Dummy decision level:
                     newDecisionLevel();
                 } else if (value(p) == l_False) {
-                    analyzeFinal(~p, conflict);
+                    Solver::analyzeFinal(~p, conflict);
                     return l_False;
                 } else {
                     next = p;
@@ -1730,31 +2107,6 @@ void SolverPT::unsatRestartStrategy()
         incReduceDB = 900;
     }
 }
-
-struct reduceDB_lt {
-    ClauseAllocator& ca;
-    reduceDB_lt(ClauseAllocator& ca_) : ca(ca_) {}
-    bool operator()(CRef x, CRef y)
-    {
-
-        // Main criteria... Like in MiniSat we keep all binary clauses
-        if (ca[x].size() > 2 && ca[y].size() == 2) { return 1; }
-
-        if (ca[y].size() > 2 && ca[x].size() == 2) { return 0; }
-        if (ca[x].size() == 2 && ca[y].size() == 2) { return 0; }
-
-        // Second one  based on literal block distance
-        if (ca[x].lbd() > ca[y].lbd()) { return 1; }
-        if (ca[x].lbd() < ca[y].lbd()) { return 0; }
-
-
-        // Finally we can use old activity or size, we choose the last one
-        return ca[x].activity() < ca[y].activity();
-        //return x->size() < y->size();
-
-        //return ca[x].size() > 2 && (ca[y].size() == 2 || ca[x].activity() < ca[y].activity()); }
-    }
-};
 
 void SolverPT::reduceDB()
 {
