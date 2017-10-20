@@ -13,3 +13,6 @@ depend.mk
 
 # backup files
 *~
+
+# astyle orig files
+*.orig
