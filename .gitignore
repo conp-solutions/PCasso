@@ -1,0 +1,15 @@
+# Object files
+*.od
+*.or
+*.os
+*.o
+*.a
+depend.mk
+
+# KDevelop files
+.kdev4/
+.kdev_include_paths
+*.kdev4
+
+# backup files
+*~
