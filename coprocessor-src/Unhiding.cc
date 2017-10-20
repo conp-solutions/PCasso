@@ -383,7 +383,7 @@ bool Unhiding::unhideSimplify(bool borderIteration, bool& foundEE)
 	    << ~clause[j]  << " s: " << stampInfo[ toInt(~clause[j]) ].dsc << " e: " << stampInfo[ toInt(~clause[j]) ].fin 
 	    << endl; }
 	}
-	if( config.opt_uhd_Debug > 0 ){  cerr << "c [UHTE] remove " << clause << cerr << endl; }
+	if( config.opt_uhd_Debug > 0 ){  cerr << "c [UHTE] remove " << clause << endl; }
 	data.removedClause(clRef);
 	if( clause.size() == 2 ) big.removeEdge(clause[0],clause[1]);
 	// if a clause has been removed, call
