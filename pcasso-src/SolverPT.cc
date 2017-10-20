@@ -10,17 +10,17 @@ using namespace Pcasso;
 
 // Davide> Options
 
-static BoolOption    opt_learnt_unary_res("SPLITTER + SHARING", "learnt-unaryres", "If false, the learnt clause is NOT resolved with any \"unsafe\" unary clause, so that it can be shared at a higher level in the tree\n", false);
+static BoolOption    opt_learnt_unary_res("SPLITTER + SHARING", "learnt-unaryres", "If false, the learnt clause is NOT resolved with any \"unsafe\" unary clause, so that it can be shared at a higher level in the tree\n", true);
 static IntOption     opt_addClause_FalseRemoval("SPLITTER + SHARING", "addcl-falserem", "Controls the removal of the false literals in a clause that is being added to the solver. With 0, the literals are removed only if this does not worsen the PTLevel of the clause. (0=standard, 1=aggressive)", 1, IntRange(0, 1));
-static IntOption     opt_sharedClauseMaxSize("SPLITTER + SHARING", "shclause-size", "A clause is eligible to be shared if its size is less than or equal to ..", 1, IntRange(1, 100));
-static IntOption     opt_LBD_lt("SPLITTER + SHARING", "lbd-lt", "A clause is eligible to be shared if its Literals Blocks Distance is less than or equal to ..", 0, IntRange(0, 10));
-static BoolOption    opt_learnt_worsening("SPLITTER + SHARING", "learnt-worsening", "During conflict clause minimization, the PTLevel of the learnt clause is increased in order to remove more literals from it\n", false);
+static IntOption     opt_sharedClauseMaxSize("SPLITTER + SHARING", "shclause-size", "A clause is eligible to be shared if its size is less than or equal to ..", 2, IntRange(1, 100));
+static IntOption     opt_LBD_lt("SPLITTER + SHARING", "lbd-lt", "A clause is eligible to be shared if its Literals Blocks Distance is less than or equal to ..", 2, IntRange(0, 10));
+static BoolOption    opt_learnt_worsening("SPLITTER + SHARING", "learnt-worsening", "During conflict clause minimization, the PTLevel of the learnt clause is increased in order to remove more literals from it\n", true);
 static BoolOption    opt_pools_filling("SPLITTER + SHARING", "pools-filling", "Whenever a pool is filled, the shared clause is stored in ONE OF the pools of the children nodes\n", false);
 static BoolOption    opt_dynamic_PTLevels("SPLITTER + SHARING", "dynamic-ptlevels", "A clause c of PTLevel pt is sent to the pool of level pt + floor(log2(|c|))\n", false);
 static BoolOption    opt_random_sharing("SPLITTER + SHARING", "random-sharing", "A learnt clause is NOT eligible to be shared with probability given by the rnd-shprob option. All other learnts are eligible\n", false);
 static IntOption     opt_random_sh_prob("SPLITTER + SHARING", "rnd-shprob", "If a learnt clause is eligible to be shared, it is NOT shared with probability rnd-shprob", 0, IntRange(0, 100));
 static BoolOption    opt_shconditions_relaxing("SPLITTER + SHARING", "shcnd-rel", "Conditions for eligibility of a learnt clause are relaxed of the logarithm of its PTLevel\n", false);
-static BoolOption    opt_every_shpool("SPLITTER + SHARING", "every-shpool", "At every restart, every shpool accessible from the current node is accessed\n", false);
+static BoolOption    opt_every_shpool("SPLITTER + SHARING", "every-shpool", "At every restart, every shpool accessible from the current node is accessed\n", true);
 static BoolOption    opt_disable_stats("SPLITTER + SHARING", "disable-stats", "Disable statistics for the Solver\n", false);
 static BoolOption    opt_disable_dupl_removal("SPLITTER + SHARING", "dis-duplrem", "Disable the removal of duplicate clauses into shared pools\n", false);
 static BoolOption    opt_disable_dupl_check("SPLITTER + SHARING", "dis-duplcheck", "Disable the duplicate check completely\n", false);
@@ -29,24 +29,24 @@ static BoolOption    opt_flag_based("SPLITTER + SHARING", "flag-based", "Enable 
 static IntOption     opt_receiver_filter("SPLITTER + SHARING", "receiver-filter", "Filter on received clauses: 0 - NONE, 1 - SIZE, 2 - LDB_LT, 3 - PSM, 4 PSM_ACTIVITY\n", 0, IntRange(0, 4));
 static IntOption     opt_receiver_score("SPLITTER + SHARING", "receiver-score", "Score value of the receiver filter\n", 1, IntRange(0, 100));
 //>>>>>>>>>ahmed>>>>>>>>>
-static BoolOption    opt_dyn_lbd_shr("SPLITTER + SHARING", "dyn-lbdsh", "Enable dynamic lbd sharing\n", false);
-static DoubleOption    opt_dyn_lbd_shr_fac("SPLITTER + SHARING", "dyn-lbdshfac", "Enable dynamic lbd sharing\n",  1, DoubleRange(0, false, 1, true));
+static BoolOption    opt_dyn_lbd_shr("SPLITTER + SHARING", "dyn-lbdsh", "Enable dynamic lbd sharing\n", true);
+static DoubleOption    opt_dyn_lbd_shr_fac("SPLITTER + SHARING", "dyn-lbdshfac", "Enable dynamic lbd sharing\n",  0.5, DoubleRange(0, false, 1, true));
 static BoolOption opt_sharing_var_bump("SPLITTER + SHARING", "shvar-bump", "Enable bumping activity of variables in shared clauses\n", false);
 static BoolOption opt_unit_sharing("SPLITTER + SHARING", "unit-sharing", "Enable sharing decision level0 units\n", false);
 //static IntOption opt_unit_sharing_ptlevel_limit("SPLITTER + SHARING", "unitptlvl-lim", "sharing greater or equal than pt level \n", 1, IntRange(0,64));
-static IntOption opt_update_act_pol("SPLITTER + SHARING", "upd-actpol", "Update Activity and polarity in treenode: 0 - disable, 1 activity only, 2 polarity only, 3 activity and polarity \n", 3, IntRange(0, 3));
+static IntOption opt_update_act_pol("SPLITTER + SHARING", "upd-actpol", "Update Activity and polarity in treenode: 0 - disable, 1 activity only, 2 polarity only, 3 activity and polarity \n", 2, IntRange(0, 3));
 static BoolOption opt_init_random_act_pol("SPLITTER + SHARING", "rnd-actpol", "Initialize random polarity and activity, except for the root\n", false);
 static IntOption opt_pull_learnts_interval("SPLITTER + SHARING", "pull-int", "learnt pull interval - zero to check on restart only \n", 0, IntRange(0, INT32_MAX));
 static BoolOption    diversification("SPLITTER + SHARING", "split-diver", "If only one child formula is unsolved, then stop the solver of that node.\n", false);
 static IntOption opt_max_tree_height("SPLITTER + SHARING", "max-tree", "Max tree height for diversification option, such that it does not go beyond that\n", 512, IntRange(8, 512));
 static BoolOption    randomization("SPLITTER + SHARING", "node-rnd", "Randomization in the nodes increases with 1% per level, if split-diver is off.\n", false);
-static IntOption opt_diversification_conflict_limit("SPLITTER + SHARING", "spdiver-lim", "conflict limit for the solver with diversification option \n", 0, IntRange(0, INT32_MAX));
+static IntOption opt_diversification_conflict_limit("SPLITTER + SHARING", "spdiver-lim", "conflict limit for the solver with diversification option \n", 4096, IntRange(0, INT32_MAX));
 static BoolOption    protect_root_node("SPLITTER + SHARING", "prot-root", "Do not interrupt root node.\n", true);
-static BoolOption    opt_restart_strategy_satunsat("SPLITTER + SHARING", "satunsat-restart", "SAT restart strategy for parent and UNSAT restart strategy for child.\n", false);
-static IntOption  cleaning_delay("SPLITTER", "clean-delay", "Cleaning delay for leaf and parent nodes; O is off, 1 is decreasing order, 2 is increasing order\n", 0, IntRange(0, 2));
+static BoolOption    opt_restart_strategy_satunsat("SPLITTER + SHARING", "satunsat-restart", "SAT restart strategy for parent and UNSAT restart strategy for child.\n", true);
+static IntOption  cleaning_delay("SPLITTER", "clean-delay", "Cleaning delay for leaf and parent nodes; O is off, 1 is decreasing order, 2 is increasing order\n", 2, IntRange(0, 2));
 static IntOption opt_shared_clean_delay("SPLITTER + SHARING", "shclean-delay", "Keep the shared clause for a certain number of cleanings\n", 1, IntRange(0, 1));
 static BoolOption    opt_lbd_minimization("SPLITTER + SHARING", "lbd-min", "Enable lbd minimization.\n", true);
-static BoolOption opt_simulate_portfolio("SPLITTER + SHARING", "sim-port", "Enable Simulation of Portfolio.\n", false);
+static BoolOption opt_simulate_portfolio("SPLITTER + SHARING", "sim-port", "Enable Simulation of Portfolio.\n", true);
 //=================================================================================================
 
 SolverPT::SolverPT(CoreConfig& config) :

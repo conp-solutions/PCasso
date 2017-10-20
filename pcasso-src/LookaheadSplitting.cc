@@ -16,17 +16,17 @@
 using namespace Pcasso;
 
 static const char* _cat = "LOOKAHEADSPLITTING";
-static DoubleOption     opt_preselection_factor(_cat, "presel-fac",             "Factor for Preselection variables", 0.15, DoubleRange(0, false, 1, true));
+static DoubleOption     opt_preselection_factor(_cat, "presel-fac",             "Factor for Preselection variables", 0.1, DoubleRange(0, false, 1, true));
 static IntOption    opt_preselection_minimum(_cat, "presel-min",        "minimum number of preselection variables", 64, IntRange(1, 128));
-static IntOption    opt_preselection_maximum(_cat, "presel-max",        "maximum number of preselection variables", 512, IntRange(128, 4096));
+static IntOption    opt_preselection_maximum(_cat, "presel-max",        "maximum number of preselection variables", 1024, IntRange(128, 4096));
 static IntOption    opt_failed_literals(_cat, "fail-lit",        "Use failed literals in splitting", 2, IntRange(0, 2));
 static IntOption    opt_nec_assign(_cat, "nec-assign",        "Use necessary assignment (local learning) in splitting", 2, IntRange(0, 2));
 static IntOption     opt_num_iterat(_cat, "num-iterat",         "Number of iterations to find more necessary assignments and failed literals", 3, IntRange(1, INT32_MAX));
 static BoolOption    opt_double_lookahead(_cat, "double-la",        "Use double lookahead", true);
 static DoubleOption     opt_double_lookahead_trigger_decay(_cat, "double-decay",             "The factor of total variables to trigger double lookahead", 0.95, DoubleRange(0, false, 1, true));
 static IntOption    opt_constraint_resolvent(_cat, "con-resolv",        "Use of constraint resolvent in lookahead", 1, IntRange(0, 1));
-static BoolOption    opt_tabu(_cat, "tabu",        "Tabu List for decision variables for scattering option", false);
-static BoolOption    opt_bin_constraints(_cat, "bin-const",        "Sharing of binary constraints ", false);
+static BoolOption    opt_tabu(_cat, "tabu",        "Tabu List for decision variables for scattering option", true);
+static BoolOption    opt_bin_constraints(_cat, "bin-const",        "Sharing of binary constraints ", true);
 static IntOption     opt_lookahead_heuristic(_cat, "la-heur",         "Lookahead heuristic to use", 4, IntRange(0, 7));
 static IntOption     opt_preselection_heuristic(_cat, "presel-heur",         "Variable Preselection heuristic to use", 2, IntRange(0, 2));
 static BoolOption    opt_adp_preselection_ranking(_cat, "adp-presel",        "Adaptive number of preselection variables", true);
@@ -35,10 +35,10 @@ static IntOption     opt_adp_preselection_S(_cat, "adp-preselS",         "Adapti
 static IntOption    opt_clause_learning(_cat, "clause-learn",        "Learn clause from failed Literal", 2, IntRange(0, 2));
 static IntOption     opt_child_direction_priority(_cat, "dir-prior",         "0=Positive,1=Negative,2=higher reduction,3=lower reduction,4=random,5=phasefromsolver,6=adaptive", 3, IntRange(0, 6));
 static DoubleOption     opt_child_direction_adaptive_factor(_cat, "dir-adp-fac",             "Adaptive Direction heuristic factor", 0.1, DoubleRange(0, false, 1, false));
-static IntOption     opt_children_count(_cat, "child-count",         "Number of children", 8, IntRange(2, 16));
+static IntOption     opt_children_count(_cat, "child-count",         "Number of children", 7, IntRange(2, 16));
 static BoolOption    opt_shrink_clauses(_cat, "shrk-clause",        "Shrink clauses in the starting of splitting ", true);
-static IntOption    opt_pure_lit(_cat, "pure-lit",        "check for pure literals during clause shrinking; 0=no, 1=local,2=pass to splitting", 0, IntRange(0, 2));
-static IntOption    opt_var_eq(_cat, "var-eq",        "check for variable equivalence 0=no, 1=check,2=local, 3=pass to splitting", 2, IntRange(0, 3));
+static IntOption    opt_pure_lit(_cat, "pure-lit",        "check for pure literals during clause shrinking; 0=no, 1=local,2=pass to splitting", 2, IntRange(0, 2));
+static IntOption    opt_var_eq(_cat, "var-eq",        "check for variable equivalence 0=no, 1=check,2=local, 3=pass to splitting", 3, IntRange(0, 3));
 static IntOption    opt_splitting_method(_cat, "split-method",        "Splitting method to use 0=simple, 1=scattering", 1, IntRange(0, 1));
 static IntOption    opt_branch_depth(_cat, "split-depth",        "Number of decision per splitting", 0, IntRange(0, INT32_MAX));
 static BoolOption    opt_dSeq(_cat, "dseq",        "Use d sequence proposed by Anntti; to use this feature fix -split-depth=0", true);
@@ -50,7 +50,7 @@ static IntOption    opt_hscore_maxclause(_cat, "h-maxcl",        "hScore max cla
 static IntOption    opt_hscore_clause_weight(_cat, "h-cl-wg",        "hScore clause weight", 5, IntRange(1, 32));
 static DoubleOption     opt_hscore_clause_upperbound(_cat, "h-upper",             "Upper bound for hscore of a literal", 10900, DoubleRange(0, false, INT32_MAX, true));
 static DoubleOption     opt_hscore_clause_lowerbound(_cat, "h-lower",             "lower bound for hscore of a literal", 0.1, DoubleRange(0, false, INT32_MAX, true));
-static BoolOption    opt_sort_split(_cat, "sort-split",        "Sort the splits according to their trail score", false);
+static BoolOption    opt_sort_split(_cat, "sort-split",        "Sort the splits according to their trail score", true);
 
 double LookaheadSplitting::triggerDoubleLookahead = 0;
 double LookaheadSplitting::branchThreshold = 0;

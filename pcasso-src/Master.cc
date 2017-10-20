@@ -49,10 +49,10 @@ static const int splitMethodNumbers = 3 ;
 
 
 // Davide> Options for clauses sharing
-static IntOption opt_pool_size("SPLITTER + SHARING", "shpool-size", "Specifies the size of the shared clauses pools, in kb\n", 5000, IntRange(0, INT32_MAX));
+static IntOption opt_pool_size("SPLITTER + SHARING", "shpool-size", "Specifies the size of the shared clauses pools, in kb\n", 15000, IntRange(0, INT32_MAX));
 
 
-static BoolOption opt_conflict_killing("SPLITTER + SHARING", "c-killing", "Conflict killing", false);
+static BoolOption opt_conflict_killing("SPLITTER + SHARING", "c-killing", "Conflict killing", true);
 
 static IntOption     split_mode("SPLITTER", "split-mode",  splitString.c_str(), 2, IntRange(0, splitMethodNumbers));
 static DoubleOption  work_timeout("SPLITTER", "work-timeout", "timeout for worker theards (seconds).\n", -1, DoubleRange(-1, true, 2000000000, true));
@@ -61,8 +61,8 @@ static DoubleOption  split_timeout("SPLITTER", "split-timeout", "timeout for spl
 static IntOption     work_threads("SPLITTER", "threads", "number of threads that should be used.\n", 1, IntRange(1, 64));
 //static IntOption     solve_mode        ("SPLITTER", "solve-mode","how to solve child nodes (0=usual, 1=simplification)\n", 0, IntRange(0, 1));
 static IntOption     maxSplitters("SPLITTER", "max-splitters", "how many splitters can be used simultaneously\n", 1, IntRange(1, 1024));
-static BoolOption    loadSplit("SPLITTER", "load-split", "If there is nothing to solve,but to split, split!.\n", false);
-static BoolOption    stopUnsatChilds("SPLITTER", "stop-children", "If a child formula is known to be unsat, stop that solver.\n", false);
+static BoolOption    loadSplit("SPLITTER", "load-split", "If there is nothing to solve,but to split, split!.\n", true);
+static BoolOption    stopUnsatChilds("SPLITTER", "stop-children", "If a child formula is known to be unsat, stop that solver.\n", true);
 static IntOption     phase_saving_mode("SPLITTER", "phase-saving-mode", "how to handle the phase saving information (0=not,1=use last)\n", 0, IntRange(0, 1));
 static IntOption     activity_mode("SPLITTER", "activity-mode", "how to handle the activity information (0=not,1=use last)\n", 0, IntRange(0, 1));
 static IntOption     keepToplevelUnits("SPLITTER", "forward-units", "propagate found toplevel units downwards (0=no, 1=yes)\n", 1, IntRange(0, 1));
