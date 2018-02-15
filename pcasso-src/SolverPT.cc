@@ -1814,7 +1814,12 @@ void SolverPT::push_learnts()
             pool->levelPoolLock.wLock();
         }
         for (unsigned int j = 0; j < learnts_indeces[i].size(); j++) {
-            Clause& c = ca[learnts[learnts_indeces[i][j]]];
+            int lc_index = learnts_indeces[i][j];
+            if (lc_index >= learnts.size()) {
+                assert(lc_index < learnts.size() && "indexes to learned clauses to share have to be in bounds");
+                continue;
+            }
+            Clause& c = ca[learnts[lc_index]];
             c.setShared();
 
             c_lits.clear(); // memory consumption optimization
