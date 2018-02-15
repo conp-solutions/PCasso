@@ -21,7 +21,7 @@ LINKSCOBJS = $(filter-out */Main.os, $(LIBSCOBJS))
 
 
 CXX       ?= g++ -std=c++11
-CFLAGS    ?= -Wall -Wno-parentheses
+CFLAGS    ?= -Wall -Wextra -Wno-parentheses -Wno-reorder
 LFLAGS    ?= -Wall
 
 COPTIMIZE ?= -O3
