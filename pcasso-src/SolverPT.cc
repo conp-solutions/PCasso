@@ -1289,6 +1289,11 @@ bool SolverPT::simplifyLCM()
     removeSatisfied(clauses); // TODO: test whether actually necessary when being executed "right after" reduceDB()
     watches.cleanAll();
 
+    // drop indexes to learned clauses
+    for (int i = 0 ; i < learnts_indeces.size(); ++i) {
+        learnts_indeces[i].clear();
+    }
+
     int ci, cj;
     for (ci = 0, cj = 0; ci < learnts.size(); ci++) {
         const CRef cr = learnts[ci];
@@ -1296,12 +1301,24 @@ bool SolverPT::simplifyLCM()
         if (c.mark()) { continue; } // this clause can be dropped
         if (c.size() < opt_lcm_min_size) {
             // do not look at clauses that have less than the given amount of literals
+            if (c.isShared()) {
+                c.decShCleanDelay();
+            } else if (c.lbd() <= LBD_lt) {
+                learnts_indeces[c.getPTLevel()].push_back(cj); // memorize this clause to share it later
+            }
             learnts[cj++] = learnts[ci];
             continue;
         }
 
         bool keep = simplifyClause_viviLCM(cr, opt_lcm_style, ! c.wasLcmSimplified() && ci >= learnts.size() / 2);  // only run full LCM on new good clauses
-        if (keep) { learnts[cj++] = learnts[ci]; }
+        if (keep) {
+            if (c.isShared()) {
+                c.decShCleanDelay();
+            } else if (c.lbd() <= LBD_lt) {
+                learnts_indeces[c.getPTLevel()].push_back(cj); // memorize this clause to share it later
+            }
+            learnts[cj++] = learnts[ci];
+        }
         if (!ok) { break; } // stop in case we found an empty clause
     }
     // fill gaps unneeded space
