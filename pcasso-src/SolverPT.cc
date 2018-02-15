@@ -2136,6 +2136,10 @@ void SolverPT::reduceDB()
 
     int limit = learnts.size() / 2;
 
+    for (int i = 0; i < learnts_indeces.size(); ++i) {
+        learnts_indeces[i].clear();
+    }
+
     for (i = j = 0; i < learnts.size(); i++) {
         Clause& c = ca[learnts[i]];
         //assert(c.getPTLevel()<learnts_indeces.size());
