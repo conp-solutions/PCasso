@@ -1035,6 +1035,7 @@ int SolverPT::simplifyLearntLCM(Clause& c, int vivificationConfig)
     int roundLits[3];
     int round = 0;
     roundLits[0] = c.size();
+    bool modified = false;
     while (vivificationConfig > 0 && c.size() > 1) {
         bool minimized = false;
         round ++;
@@ -1087,6 +1088,7 @@ int SolverPT::simplifyLearntLCM(Clause& c, int vivificationConfig)
             }
         }
 
+        if (j < c.size()) { modified = true; }
         c.shrink(c.size() - j);
 
         if (roundViviConfig > 1 && (confl != CRef_Undef)) {
@@ -1098,6 +1100,7 @@ int SolverPT::simplifyLearntLCM(Clause& c, int vivificationConfig)
             if (conflict.size() < c.size()) {
                 nbConflLits += c.size() - conflict.size();
                 assert(c.size() >= conflict.size() && "shrink should not increase size");
+                modified = true;
                 c.shrink(c.size() - conflict.size()); // shrink clause!
                 for (int k = 0; k < c.size(); ++ k) { c[k] = conflict[k]; } // and actually use the literals of conflict
             } else if (false && impliedLit != lit_Undef && c.last() == impliedLit && j == c.size()) { // this is no valid operation, unless we actually did not shrink c above!
@@ -1142,6 +1145,9 @@ int SolverPT::simplifyLearntLCM(Clause& c, int vivificationConfig)
     nbRound1Lits += roundLits[0] - roundLits[1];
     if (round > 1) { nbRound2Lits += roundLits[1] - roundLits[2]; }
 
+    // set worst case PT level, as we currently do not have a good way to track the actual level
+    if (modified) { c.setPTLevel(getNodePTLevel()); }
+
     return c.lbd();
 }
 
@@ -1178,6 +1184,8 @@ bool SolverPT::simplifyClause_viviLCM(const CRef cr, int LCMconfig, bool fullySi
                 }
                 nbLCMfalsified += (i - j);
                 c.shrink(i - j);
+                // set worst case PT level, as we currently do not have a good way to track the actual level
+                c.setPTLevel(getNodePTLevel());
             }
         }
         // a clause might become satisfiable during the analysis. remove such a clause!
