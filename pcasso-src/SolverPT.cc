@@ -1435,6 +1435,7 @@ void SolverPT::push_learnts()
     bool sharedSuccess = false;
     bool fullPool = false;
 
+    vec<Lit> c_lits;
     for (unsigned int i = 0; i < learnts_indeces.size(); i++) {
         davide::LevelPool* pool = previous_pools[i];
 
@@ -1453,7 +1454,7 @@ void SolverPT::push_learnts()
             Clause& c = ca[learnts[learnts_indeces[i][j]]];
             c.setShared();
 
-            vec<Lit> c_lits;
+            c_lits.clear(); // memory consumption optimization
             for (unsigned j = 0; j < c.size(); j++) { //creating vector of literals present in the clause
                 c_lits.push(c[j]);
             }
