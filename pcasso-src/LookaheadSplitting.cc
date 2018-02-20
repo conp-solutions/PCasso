@@ -337,6 +337,8 @@ lbool LookaheadSplitting::produceSplitting(vec<vec<vec<Lit>* >* > **splits, vec<
                 } else if (next == lit_Undef) {
                     if (checkSolution()) {
                         return l_True;
+                    } else {
+                        assert(false && "this case should be handled, a split is required");
                     }
                 }
 
@@ -509,6 +511,8 @@ lbool LookaheadSplitting::produceSplitting(vec<vec<vec<Lit>* >* > **splits, vec<
                     if (next == lit_Undef) {
                         if (checkSolution()) {
                             return l_True;
+                        } else {
+                            assert(false && "this case should be handled, a split is required");
                         }
                     }
                     if (decisionLevel() == 0 && splitting->size() == 0) {
@@ -1449,7 +1453,7 @@ jump:
         }
     }
 
-    Lit next;
+    Lit next = lit_Undef;
 
     if (bestVarIndex != var_Undef) {
         bool pol = false;
@@ -1583,7 +1587,7 @@ jump:
     *///if(opt_var_eq>0)
     //fprintf(stderr, "splitter: Var Equivalence \t\t\t = %d \n", varEq.size()/2);
     //fprintf(stderr, "splitter: Best Var Index = %d\n",bestVarIndex);
-    if (opt_tabu) {
+    if (opt_tabu && next != lit_Undef) {
         tabuList[var(next)] = true;
     }
 
