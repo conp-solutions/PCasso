@@ -880,7 +880,7 @@ Master::solveInstance(void* data)
     } else {
         // result of solver is "unknown"
         if (master.plainpart) { tData.nodeToSolve->setState(TreeNode::retry); }
-        else { tData.nodeToSolve->setState(TreeNode::unknown); }
+        else { if (tData.nodeToSolve->getState() == TreeNode::retry) tData.nodeToSolve->setState(TreeNode::unknown); }
 
         if (keepToplevelUnits > 0) {
             int toplevelVariables = 0;
@@ -942,7 +942,7 @@ Master::splitInstance(void* data)
     if (Portfolio && tData.nodeToSolve->getLevel() < PortfolioLevel) { // perform portfolio only until this level!
         master.lock(); // ********************* START CRITICAL ***********************
         childConstraints.push_back(new vector<vector<Lit>*>);
-        tData.nodeToSolve->setState(TreeNode::unknown);
+        if (tData.nodeToSolve->getState() == TreeNode::retry) { tData.nodeToSolve->setState(TreeNode::unknown); } // only modify, if it's retry
         tData.nodeToSolve->expand(childConstraints);
         master.addNode(tData.nodeToSolve->getChild(0));
         tData.result = ret;
@@ -1149,7 +1149,7 @@ Master::splitInstance(void* data)
         // shut down all threads that are running below that node (necessary?)
     } else {
         // simply set the node to the unknown state
-        tData.nodeToSolve->setState(TreeNode::unknown);
+        if (tData.nodeToSolve->getState() == TreeNode::retry) { tData.nodeToSolve->setState(TreeNode::unknown); }
         for (unsigned int i = 0; i < validConstraints.size(); i++) {
             tData.nodeToSolve->addNodeConstraint(validConstraints[i]);
         }
