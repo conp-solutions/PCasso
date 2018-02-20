@@ -1448,7 +1448,7 @@ jump:
         }
     }
 
-    Lit next;
+    Lit next = lit_Undef;
 
     if (bestVarIndex != var_Undef) {
         bool pol;
@@ -1577,7 +1577,7 @@ jump:
     *///if(opt_var_eq>0)
     //fprintf(stderr, "splitter: Var Equivalence \t\t\t = %d \n", varEq.size()/2);
     //fprintf(stderr, "splitter: Best Var Index = %d\n",bestVarIndex);
-    if (opt_tabu) {
+    if (opt_tabu && next != lit_Undef) {
         tabuList[var(next)] = true;
     }
 
