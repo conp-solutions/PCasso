@@ -1425,10 +1425,12 @@ decLitNotFound:
 jump:
     cancelUntil(decLev);
 
-    for (int i = 0; i < score.size(); i++) {
-        if (score[i] > 0 && score[i] > bestVarScore && value(bestKList[i]) == l_Undef) {
-            bestVarScore = score[i];
-            bestVarIndex = i;
+    if (bestKList.size() > 0) {
+        for (int i = 0; i < score.size(); i++) {
+            if (score[i] > 0 && score[i] > bestVarScore && value(bestKList[i]) == l_Undef) {
+                bestVarScore = score[i];
+                bestVarIndex = i;
+            }
         }
     }
 
