@@ -209,12 +209,15 @@ int Master::run()
             if (threadData[i].s == unclean) {
 
                 // Davide> Free memory
-                if (threadData[i].result == 20 && stopUnsatChilds) {
+                if (threadData[i].result == 20) {
                     // The children are NOT running, so I can delete every pool
                     lock();
                     threadData[i].nodeToSolve->setState(TreeNode::unsat, true);
+                    // fprintf(stderr, "c root node state: %d\n", root.getState());
                     unlock();
-                    killUnsatChildren(i);
+                    if (stopUnsatChilds) {
+                        killUnsatChildren(i);
+                    }
                 }
 
                 uncleans++;
