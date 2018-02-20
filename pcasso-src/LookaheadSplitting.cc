@@ -1192,8 +1192,9 @@ decLitNotFound:
             sizePositiveLookahead = trail.size() - initTrailSize;
             for (int j = initTrailSize; j < trail.size(); j++) {
                 //fprintf(stderr, "Watcher size = %d\n", watches[trail[j]].size());
-                sizeWatcherPositiveLookahead += sign(trail[j]) ? watcherNegLitSize[bestKList[i]] : watcherPosLitSize[bestKList[i]];
-                binClausePositiveLookahead += sign(trail[j]) ? numPosLitTerClause[var(trail[j])] : numNegLitTerClause[var(trail[j])];
+                const Var v = var(trail[j]);
+                sizeWatcherPositiveLookahead += sign(trail[j]) ? watcherNegLitSize[v] : watcherPosLitSize[v];
+                binClausePositiveLookahead += sign(trail[j]) ? numPosLitTerClause[v] : numNegLitTerClause[v];
             }
             //check if solution found
             if (checkSolution()) {
@@ -1267,8 +1268,9 @@ decLitNotFound:
                 }
                 sizeNegativeLookahead = trail.size() - initTrailSize;
                 for (int j = initTrailSize; j < trail.size(); j++) {
-                    sizeWatcherNegativeLookahead += sign(trail[j]) ? watcherNegLitSize[bestKList[i]] : watcherPosLitSize[bestKList[i]];
-                    binClauseNegativeLookahead += sign(trail[j]) ? numPosLitTerClause[var(trail[j])] : numNegLitTerClause[var(trail[j])];
+                    const Var v = var(trail[j]);
+                    sizeWatcherNegativeLookahead += sign(trail[j]) ? watcherNegLitSize[v] : watcherPosLitSize[v];
+                    binClauseNegativeLookahead += sign(trail[j]) ? numPosLitTerClause[v] : numNegLitTerClause[v];
                 }
                 //check if to perform double lookahead
                 if (opt_double_lookahead) {
