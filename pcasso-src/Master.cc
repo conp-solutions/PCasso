@@ -196,6 +196,7 @@ int Master::run()
     // check the state of the tree
     // solve the next node in the tree
     if (MSverbosity > 0) { fprintf(stderr, "M: start main loop\n"); }
+    int stuck = 0;
     while (!done) {
 
         int idles = 0;  // important, because this indicates that there can be done more in the next round!
@@ -371,7 +372,13 @@ int Master::run()
                 for (; i < threads; ++i) {
                     if (threadData[i].s == splitting) { break; }  // TODO SHOULDN'T BE IDLE ?? DAVIDE>
                     if (threadData[i].s == working) { break; }  // do not stop if some worker is doing something
+                    if (threadData[i].s == unclean) { break; }  // do not stop if some worker is not cleaned up yet
                 }
+
+                // allow the solver 16 times reaching this before we actually stop working
+                stuck ++;
+                if (stuck < 16) { continue; }
+
                 // if there is a thread that is still doing something, we did not run out of work!
                 if (i == threads) {
                     fprintf(stderr, "\n***\n*** RUN OUT OF WORK - return unknown?\n***\n\n");
@@ -384,7 +391,9 @@ int Master::run()
                         else if (threadData[i].s == unclean) { uncleans++; }
                     }
 
-                    fprintf(stderr, "c idle: %d working: %d splitting: %d unclean: %d\n", idles, workers, splitters, uncleans);
+                    fprintf(stderr, "c (after %d iterations): idle: %d working: %d splitting: %d unclean: %d\n", stuck, idles, workers, splitters, uncleans);
+                    // for debugging purposes, stop here. we assume, there is a solution but nobody told us, so let's check
+                    assert(false && "this should not be reached");
 
                     exit(0);
                 }
