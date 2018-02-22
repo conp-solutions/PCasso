@@ -1891,10 +1891,11 @@ void SolverPT::pull_learnts(int curr_restarts)
         int back_steps;
         TreeNode* back_steps_node;
         if (opt_simulate_portfolio && tnode->isOnlyChildScenario()) {
+	    fprintf(stderr,"receive portfolio clauses");
             //Debug::PRINTLN("NOTE: Starting portfolio");
             i = tnode->getOnlyChildScenarioChildNode()->getPTLevel();
             if (shared_indeces.size() <= i) {
-                assert(1 + i - shared_indeces.size() >= 0);
+                assert(1 + i >= shared_indeces.size());
                 unsigned j = 1 + i - shared_indeces.size();
                 while (j > 0) {
                     shared_indeces.push_back(0);
@@ -1950,6 +1951,7 @@ void SolverPT::pull_learnts(int curr_restarts)
                 //              pthread_setcancelstate(old_cancel_state, NULL);
 
                 if (!ok) {
+		    fprintf(stderr, "failed immediately after receiving shared clauses\n");
                     break;
                 }
             } // Davide> End of if
