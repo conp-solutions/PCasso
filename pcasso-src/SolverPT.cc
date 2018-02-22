@@ -1130,7 +1130,7 @@ lbool SolverPT::search(int nof_conflicts)
                 pull_learnts(starts);
                 if (!ok) { return l_False; }
                 if (!simplify()) {
-                    printf("c last restart ## conflicts  :  %d %d \n", conflictC, decisionLevel());
+                    // fprintf(stderr, "c last restart ## conflicts  :  %d %d \n", conflictC, decisionLevel());
                     return l_False;
                 }
             }
@@ -1167,7 +1167,7 @@ lbool SolverPT::search(int nof_conflicts)
 
                 if (next == lit_Undef) {
 
-                    printf("c last restart ## conflicts  :  %d %d \n", conflictC, decisionLevel());
+                    // fprintf("c last restart ## conflicts  :  %d %d \n", conflictC, decisionLevel());
                     // Model found:
                     return l_True;
                 }
