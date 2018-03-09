@@ -148,6 +148,8 @@ lbool LookaheadSplitting::produceSplitting(vec<vec<vec<Lit>* >* > **splits, vec<
     int initTrailSize = trail.size();
     vec<VarScore> splittingScore; //storing the number of assigned literals as score for each index of splitting
 
+    fprintf(stderr, "LA splitter, split with mode %d\n", (int)opt_splitting_method);
+    
     if (opt_splitting_method == 0) {
         optNumChild = 1;
         decList = new vec<Lit>();
@@ -508,6 +510,8 @@ lbool LookaheadSplitting::produceSplitting(vec<vec<vec<Lit>* >* > **splits, vec<
                         if (checkSolution()) {
                             return l_True;
                         }
+			fprintf(stderr, "returned lit_undef during splittings pickBranchLit, but without solution");
+			assert(next != lit_Undef && "we should not be reaching this here without actually handling it");
                     }
                     if (decisionLevel() == 0 && splitting->size() == 0) {
                         //localValid->copyTo(**valid);
@@ -726,7 +730,10 @@ void LookaheadSplitting::shrinkClauses()
                     statistics.changeI(splitterTotalPureLiteralsID, 1);
                 }
             }
-            //fprintf(stderr,"splitter: Found pure literals : %d\n",pureLiterals.size());
+            if(pureLiterals.size() > 0 ){
+	      fprintf(stderr,"LA splitter: Found pure literals : %d\n",pureLiterals.size());
+	      std::cerr << "c pure literals: " << pureLiterals << endl;
+	    }
         }
 
         checkGarbage();
