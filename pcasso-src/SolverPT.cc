@@ -57,6 +57,27 @@ static IntOption opt_lcm_dbg("SPLITTER + LCM", "lcm-dbg",           "debug LCM c
 
 //=================================================================================================
 
+static void printStats(Solver& solver)
+{
+    double cpu_time = cpuTime();
+
+    double mem_used = memUsedPeak();
+    fprintf(stderr, "c restarts              : %"PRIu64" (%"PRIu64" conflicts in avg)\n", solver.starts, solver.starts == 0 ? 0 : solver.conflicts / solver.starts);
+    fprintf(stderr, "c blocked restarts      : %"PRIu64" (multiple: %"PRIu64") \n", solver.nbstopsrestarts, solver.nbstopsrestartssame);
+    fprintf(stderr, "c last block at restart : %"PRIu64"\n", solver.lastblockatrestart);
+    fprintf(stderr, "c nb ReduceDB           : %"PRIu64"\n", solver.nbReduceDB);
+    fprintf(stderr, "c nb removed Clauses    : %"PRIu64"\n", solver.nbRemovedClauses);
+    fprintf(stderr, "c nb learnts DL2        : %"PRIu64"\n", solver.nbDL2);
+    fprintf(stderr, "c nb learnts size 2     : %"PRIu64"\n", solver.nbBin);
+    fprintf(stderr, "c nb learnts size 1     : %"PRIu64"\n", solver.nbUn);
+    fprintf(stderr, "c conflicts             : %-12"PRIu64"   (%.0f /sec)\n", solver.conflicts, cpu_time == 0 ? 0 : solver.conflicts / cpu_time);
+    fprintf(stderr, "c decisions             : %-12"PRIu64"   (%4.2f %% random) (%.0f /sec)\n", solver.decisions, solver.decisions == 0 ? 0 : (float)solver.rnd_decisions * 100 / (float)solver.decisions, cpu_time == 0 ? 0 : solver.decisions / cpu_time);
+    fprintf(stderr, "c propagations          : %-12"PRIu64"   (%.0f /sec)\n", solver.propagations, cpu_time == 0 ? 0 : solver.propagations / cpu_time);
+    fprintf(stderr, "c conflict literals     : %-12"PRIu64"   (%4.2f %% deleted)\n", solver.tot_literals, solver.max_literals == 0 ? 0 : (solver.max_literals - solver.tot_literals) * 100 / (double)solver.max_literals);
+    fprintf(stderr, "c nb reduced Clauses    : %"PRIu64"\n", solver.nbReducedClauses);
+    fprintf(stderr, "c CPU time              : %g s\n", cpu_time);
+}
+
 SolverPT::SolverPT(CoreConfig& config) :
     SplitterSolver(config)
     , coreConfig(config)
@@ -123,6 +144,7 @@ SolverPT::SolverPT(CoreConfig& config) :
 
 SolverPT::~SolverPT()
 {
+  if(clauses_file) { delete clauses_file; clauses_file = 0;}
 }
 
 // Davide> Done, maybe .. It does remove literals of level zero
@@ -155,8 +177,10 @@ bool SolverPT::addClause_(vec<Lit>& ps, unsigned int pt_level) // Davide> pt_lev
 
     if (ps.size() == 0) {
         lastLevel = pt_level;
+	if(clauses_file) *clauses_file << "c added empty clause, set last level to " << pt_level << endl;
         return ok = false;
     } else if (ps.size() == 1) {
+        if(clauses_file) *clauses_file << "c added unit with level " << pt_level << endl << ps << " 0" << endl;
         if (value(ps[0]) == l_False) {
             assert(false && "addClause_ Unuseful");
             Debug::PRINTLN_NOTE("NOTE: tried to add unary false clause");
@@ -173,6 +197,8 @@ bool SolverPT::addClause_(vec<Lit>& ps, unsigned int pt_level) // Davide> pt_lev
         cr = ca.alloc(ps, false);
         ca[cr].setPTLevel(pt_level); // Davide> Setting the pt_level
 
+	if(clauses_file) *clauses_file << "c added clause with level " << pt_level << endl << ps << " 0" << endl;
+	
         clauses.push(cr);
 
         // TODO Norbert: uncomment, so that gets active
@@ -276,6 +302,8 @@ void SolverPT::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel, unsig
     out_learnt.push();      // (leave room for the asserting literal)
     int index   = trail.size() - 1;
 
+    CRef original_conlf = confl;
+    
     do {
         assert(confl != CRef_Undef); // (otherwise should be UIP)
         Clause& c = ca[confl];
@@ -322,7 +350,7 @@ void SolverPT::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel, unsig
                 //         and we can share them ( if they have not been obtained
                 //         by a resolution with an unsafe clause, already )
                 //
-                else // Davide> level(var(q)) == 0
+                else {// Davide> level(var(q)) == 0
                     if (!learnt_unary_res && getLiteralPTLevel(q) > PTLevel) { // Davide> This PTLevel is temporary, it could increase ( that is, we could simplify more the clause ) as we continue to analyze the relevant clauses
                         varFlags[var(q)].seen = 1;
                         out_learnt.push(q);
@@ -338,6 +366,7 @@ void SolverPT::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel, unsig
                         //                          if( getLiteralPTLevel(q) > max_bad_literal )
                         //                              max_bad_literal = getLiteralPTLevel(q);
                     }
+		}
             }
         }
 
@@ -361,6 +390,9 @@ void SolverPT::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel, unsig
     out_learnt.copyTo(analyze_toclear);
     unsigned int oldSize = out_learnt.size();
 
+    if(out_learnt.size() == 1 )
+      fprintf(stderr, "%lx: removed literals from learned clause with %d lits on level %d to share at %u\n", this, out_learnt.size(), getNodePTLevel(), PTLevel);
+    
     unsigned int oldPTLevel = PTLevel; // Davide> for statistics
 
     if (ccmin_mode == 2) {
@@ -381,6 +413,10 @@ void SolverPT::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel, unsig
                 out_learnt[j++] = out_learnt[i];
             }
 
+        // TODO: check whether PT level is computed correctly
+        if (out_learnt.size() != oldSize)
+            fprintf(stderr, "%lx: removed literals from learned clause via ccmin_mode=2 from %d to %d on level %d to share at %u\n", this, oldSize, out_learnt.size(), getNodePTLevel(), PTLevel);
+	
         // Davide> statistics
         if (!disable_stats)
 
@@ -432,6 +468,12 @@ void SolverPT::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel, unsig
     out_learnt.shrink(i - j);
     tot_literals += out_learnt.size();
 
+    // debugging assertion
+    if(out_learnt.size() == 0 && out_learnt[0] == toLit(56))
+    {
+      cerr << "c learned clause " << out_learnt << " with level " << PTLevel << " was generated from conflict " << ca[original_conlf] << " with level " << ca[original_conlf].getPTLevel() << endl;
+      assert(false && "generate conflict clause 57 0");
+    }
 
     /* ***************************************
       Minimisation with binary clauses of the asserting clause
@@ -642,6 +684,7 @@ void SolverPT::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel, unsig
             }
             pool->levelPoolLock.wLock();
         }
+        cerr << "share unit clause " << out_learnt << " from ID " << tnode->id() << " from level " << getNodePTLevel() << " to " << tempPTLevel << endl;
         sharedSuccess = pool->add_shared(out_learnt, tnode->id(), disable_dupl_removal, disable_dupl_check);
         bool fullPool = pool->isFull();
 
@@ -1645,6 +1688,10 @@ lbool SolverPT::solve_()
     }
 
     cancelUntil(0);
+    
+    // print statistics about this solver object
+    printStats(*this);
+    
     return status;
 }
 
@@ -1761,6 +1808,7 @@ void SolverPT::push_units()
             pool->levelPoolLock.wLock();
         }
 
+        if(clauses_file) *clauses_file << "c share unit clause " << c << " with level " << tnode->getLevel() << "(should be " << tempPTLevel << ")";
         sharedSuccess =
             pool->add_shared(c, tnode->id(), disable_dupl_removal, disable_dupl_check);
         fullPool = pool->isFull();
@@ -1821,7 +1869,6 @@ void SolverPT::push_learnts()
 
         if (pool == 0) { continue; }
 
-
         // ******************** CRITICAL SECTION ************************** //
 
         if (!pool->levelPoolLock.try_wLock()) { // Attempt with spin-lock
@@ -1830,6 +1877,7 @@ void SolverPT::push_learnts()
             }
             pool->levelPoolLock.wLock();
         }
+        fprintf(stderr, "%lx: share %d clauses for level %d\n", this, learnts_indeces[i].size(), i);
         for (unsigned int j = 0; j < learnts_indeces[i].size(); j++) {
             int lc_index = learnts_indeces[i][j];
             if (lc_index >= learnts.size()) {
@@ -1837,14 +1885,17 @@ void SolverPT::push_learnts()
                 continue;
             }
             Clause& c = ca[learnts[lc_index]];
+	    // if(c.getShared()) continue; // we should not share shared clauses again
             c.setShared();
 
             c_lits.clear(); // memory consumption optimization
             for (unsigned j = 0; j < c.size(); j++) { //creating vector of literals present in the clause
                 c_lits.push(c[j]);
             }
-
-
+	    std::stringstream sharestring;
+	    sharestring << this << ": share clause with level " << c.getPTLevel() << " to level " << i << " to node " << tnode->id() << ": " << c << endl;
+	    fprintf(stderr, "%s\n", sharestring.str().c_str());
+            assert(c.getPTLevel() >= i && "cannot share clause more upwards than its PT level allows");
             sharedSuccess = pool->add_shared(c_lits, tnode->id(), disable_dupl_removal, disable_dupl_check);
             fullPool = pool->isFull();
 
@@ -1932,7 +1983,7 @@ void SolverPT::pull_learnts(int curr_restarts)
                     }
                     pool->levelPoolLock.rLock();                 // Davide> START CRITICAL
                 }
-                int readP = shared_indeces[i];
+                volatile int readP = shared_indeces[i];
 
                 pool->getChunk(readP, chunk);
 
@@ -1942,6 +1993,11 @@ void SolverPT::pull_learnts(int curr_restarts)
 
                 // ******************** END OF CRITICAL SECTION ******************* //
 
+		if(chunk.size() > 0 )
+		{
+		if(i > getNodePTLevel()) cerr << "lowering pt level of received clauses from " << i << " to " << getNodePTLevel() << endl;
+		// assert(getNodePTLevel() <= i && "canonot lower the PT level of received clauses");
+		cerr << this << ": process chunk of (read " << shared_indeces[i] << " to " << readP << "): " << chunk << endl;
                 addChunkToLearnts(chunk, i > getNodePTLevel() ? getNodePTLevel() : i, shared_indeces[i], pool->writeP);
 
                 shared_indeces[i] = readP; // Davide> update of the shared index
@@ -1954,6 +2010,7 @@ void SolverPT::pull_learnts(int curr_restarts)
 		    fprintf(stderr, "failed immediately after receiving shared clauses\n");
                     break;
                 }
+		}
             } // Davide> End of if
         } // Davide> End of for
         //localStat.changeD(sharing_time_ID, cpuTime_t()-startSharingTime);
@@ -1965,6 +2022,9 @@ bool SolverPT::addSharedLearnt(vec<Lit>& ps, unsigned int pt_level)
     // Check if clause is satisfied and remove false/duplicate literals:
     //sort(ps);
 
+    const int old_pt_level = pt_level;
+    if(clauses_file) *clauses_file << "c received shared clause " << ps << " with level " << pt_level << endl;
+  
     Lit p; int i, j;
     for (i = j = 0; i < ps.size(); i++) {
         if (value(ps[i]) == l_True && level(var(ps[i])) == 0) {   // we do not use satisfied clauses on any level
@@ -1972,13 +2032,7 @@ bool SolverPT::addSharedLearnt(vec<Lit>& ps, unsigned int pt_level)
         } else if (value(ps[i]) == l_Undef || level(var(ps[i])) != 0) { // its undef, or not assigned at  level 0 => keep literal
             ps[j++] = ps[i];
         } else if (level(var(ps[i])) == 0 &&  value(ps[i]) == l_False) { //removing propagated literals at decision level zero  from the clause
-            if (false && addClause_FalseRemoval == 0) {
-                // Davide> In order to maximize sharing, the safety of a clauses
-                // is not corrupted
-                if (getLiteralPTLevel(ps[i]) > pt_level) {
-                    ps[j++] = ps[i];
-                }
-            } else {
+            {
                 const unsigned int& tmp = getLiteralPTLevel(ps[i]);
                 pt_level = pt_level >= tmp ? pt_level : tmp; // Davide> Aggressive removal can prevent clauses to be shared higher in the PartitionTree
             }
@@ -1987,10 +2041,14 @@ bool SolverPT::addSharedLearnt(vec<Lit>& ps, unsigned int pt_level)
     // there can be satisfied literals inside the clause!
     ps.shrink(i - j);
 
+    assert(pt_level >= old_pt_level && "pt level can only increase during modificatoins");
+    if(clauses_file) *clauses_file << "c turned into " << ps << " with level " << pt_level << endl << ps << " 0" << endl;
+    
     if (ps.size() == 0) {
         if (!disable_stats) {
             localStat.changeI(n_import_shcl_unsatID, 1);
         }
+        if(clauses_file) *clauses_file << "c unsat due to received clause, set last level to " << lastLevel << endl;
         lastLevel = pt_level; // TODO Tests
         return ok = false;
     }
@@ -2171,7 +2229,10 @@ SolverPT::addChunkToLearnts(vec<Lit>& chunk, unsigned int pt_level, int readP, i
 
         while (chunk[i] == lit_Undef) { ++i; }
 
-        if (!ok) { return; }
+        if (!ok) {
+	  cerr << "c " << this << " stopped receiving due to non-ok" << endl;
+	  return;
+	}
 
         clause.clear();
 
@@ -2192,6 +2253,8 @@ SolverPT::addChunkToLearnts(vec<Lit>& chunk, unsigned int pt_level, int readP, i
         assert(chunk[i] == lit_Undef);
         assert(clause.size() != 0);
 
+	if(clauses_file) *clauses_file << "c receive clause with level " << pt_level << endl;
+	cerr << "c receive clause " << clause << " with level " << pt_level << endl;
         addClause(clause, pt_level, true);
 
     }
