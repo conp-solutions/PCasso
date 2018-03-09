@@ -1437,6 +1437,7 @@ void SolverPT::push_learnts()
 
     vec<Lit> c_lits;
     for (unsigned int i = 0; i < learnts_indeces.size(); i++) {
+        if(learnts_indeces[i].size() == 0) continue; // nothing to share for this level, skip it!
         davide::LevelPool* pool = previous_pools[i];
 
         if (pool == 0) { continue; }
