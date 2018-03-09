@@ -25,6 +25,9 @@ class SolverPT : public SplitterSolver
 {
 
     CoreConfig& coreConfig;
+    
+    /// file handle used
+    fstream* clauses_file = 0;
 
   public:
     SolverPT(CoreConfig& config);
@@ -34,6 +37,17 @@ class SolverPT : public SplitterSolver
     {
     }
     vector<unsigned> shared_indeces;
+    
+    bool set_log_file(const char* filename)
+    {
+        if( clauses_file ) return false;
+	if(!filename) return false;
+	clauses_file = new fstream();
+	if(!clauses_file) return false;
+	clauses_file->open(filename, ios::out);
+	if(! *clauses_file) { delete clauses_file; return false; }
+	return true;
+    }
 
     std::string position; /** Davide> Position of the solver in the Partition tree */
     unsigned curPTLevel; // Davide> Contains the pt_level of curNode

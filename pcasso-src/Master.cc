@@ -76,6 +76,7 @@ static BoolOption    Portfolio("SPLITTER", "portfolio",  "Portfolio mode.\n", fa
 static Int64Option   PortfolioLevel("SPLITTER", "portfolioL", "Perform Portfolio until specified level\n", 0, Int64Range(0, INT64_MAX));     // depends on option above!
 static BoolOption    UseHardwareCores("SPLITTER", "usehw",  "Use Hardware, pin threads to cores\n", false);
 
+static BoolOption    opt_debug_slaves("SPLITTER", "debug-slv", "Write debug log files to /tmp/pcasso-* for the current run", false);
 
 static vector<unsigned short int> hardwareCores; // set of available hardware cores
 
@@ -725,6 +726,13 @@ Master::solveInstance(void* data)
     tData.solver = slvr;
     SolverPT& S = *slvr;
 
+    if(opt_debug_slaves)
+    {
+      stringstream filename;
+      filename << "/tmp/pcasso-node-" << tData.nodeToSolve->id() << "-solve.log";
+      S.set_log_file(filename.str().c_str());
+    }
+    
     // Davide> Give the position to the solver
     //S.position = tData.nodeToSolve->getPosition();
 
@@ -841,7 +849,7 @@ Master::solveInstance(void* data)
     }
 
     // take care about the output
-    if (MSverbosity > 1) { fprintf(stderr, "finished working on an instance (node %d, level %d)\n", tData.nodeToSolve->id(), tData.nodeToSolve->getLevel()); }
+    if (MSverbosity > 1) { fprintf(stderr, "%lx: finished working on an instance (node %d, level %d) with exit code %d\n", &S, tData.nodeToSolve->id(), tData.nodeToSolve->getLevel(), ret); }
     master.lock();
 
 
@@ -871,10 +879,10 @@ Master::solveInstance(void* data)
     } else if (ret == 20) {
         if (opt_conflict_killing && ((SolverPT *)tData.solver)->lastLevel < tData.nodeToSolve->getPTLevel()) {
             statistics.changeI(master.nConflictKilledID, 1);
-
+            fprintf(stderr, "%lx: perform unsat node killing, from level %d to level %d\n", &S, tData.nodeToSolve->getPTLevel(), S.lastLevel);
             int i = tData.nodeToSolve->getPTLevel() - ((SolverPT *)tData.solver)->lastLevel;
             while (i > 0) {
-                TreeNode* node = tData.nodeToSolve->getFather();
+                TreeNode* node = tData.nodeToSolve->getFather(); // FIXME: this always kills only a single level!
                 node->setState(TreeNode::unsat);
                 --i;
             }
@@ -945,6 +953,7 @@ Master::splitInstance(void* data)
     if (Portfolio && tData.nodeToSolve->getLevel() < PortfolioLevel) { // perform portfolio only until this level!
         master.lock(); // ********************* START CRITICAL ***********************
         childConstraints.push_back(new vector<vector<Lit>*>);
+	if (MSverbosity > 1) { fprintf(stderr, "create a split thread[%d] with portfolio splits\n", tData.id); }
         if (tData.nodeToSolve->getState() == TreeNode::retry) { tData.nodeToSolve->setState(TreeNode::unknown); } // only modify, if it's retry
         tData.nodeToSolve->expand(childConstraints);
         master.addNode(tData.nodeToSolve->getChild(0));
@@ -959,17 +968,18 @@ Master::splitInstance(void* data)
     // create a solver object
     SplitterSolver* S;
     if (split_mode == 1) {
+        if (MSverbosity > 1) { fprintf(stderr, "create a split thread[%d] with VSIDS splits\n", tData.id); }
         S = new VSIDSSplitting(defaultSolverConfig);
         //((VSIDSSplitting *)S)->setTimeOut(split_timeout);
     }
     if (split_mode == 2) {
+        if (MSverbosity > 1) { fprintf(stderr, "create a split thread[%d] with LA splitting\n", tData.id); }
         S = new LookaheadSplitting(defaultSolverConfig);
         ((LookaheadSplitting *)S)->setTimeOut(split_timeout);
     }
     tData.solver = S;
     // setup the parameters
     S->verbosity = tData.master->param.verb;
-
 
     // feed the instance into the solver
     while (master.varCnt() >= (unsigned int)S->nVars()) { S->newVar(); }
