@@ -28,6 +28,9 @@ bool LevelPool::add_shared(vec<Lit>& lits, unsigned int nodeID, bool disable_dup
     int i = 0;
 
     temp[0] = toLit(nodeID);
+    
+    assert(toInt(temp[0]) >= 0 && "the number to identify the node should be positive");
+    assert(writeP == 0 || shared_clauses[writeP-1] == lit_Undef); // the pointer should point at the end of a clause
 
     assert(temp.size() < shared_clauses.size());
 
@@ -38,7 +41,7 @@ bool LevelPool::add_shared(vec<Lit>& lits, unsigned int nodeID, bool disable_dup
         writeP += temp.size();
         int k = writeP;
         ++writeP;
-        while (shared_clauses[k] != lit_Undef) {
+        while (shared_clauses[k] != lit_Undef && k < endP) { // clean the whole vector, or until the next end of a clause
             shared_clauses[k++] = lit_Undef;
         }
         if (writeP > endP) { endP = writeP; }
@@ -54,7 +57,7 @@ bool LevelPool::add_shared(vec<Lit>& lits, unsigned int nodeID, bool disable_dup
         }
         int k = writeP;
         ++writeP;
-        while (shared_clauses[k] != lit_Undef) {
+        while (shared_clauses[k] != lit_Undef && k < endP) {
             shared_clauses[k++] = lit_Undef;
         }
         assert(endP > writeP);
@@ -68,10 +71,11 @@ LevelPool::getChunk(int readP, vec<Lit>& chunk)
 
     if (readP >= endP) { return; }
 
-    if (((readP != 0 && shared_clauses[readP - 1] == lit_Undef) || readP == 0)) {
+    if (( (readP != 0 && shared_clauses[readP - 1] == lit_Undef) || readP == 0)) {
         if (readP <= writeP) {
             chunk.growTo(writeP - readP);
             int j = 0;
+	    assert(readP == 0 || toInt(shared_clauses[readP]) >= 0); // the first literal indicates the ID of the node that shared the clause
             for (int i = readP; i < writeP; ++i) {
                 assert(writeP - readP == chunk.size());
                 assert(j < chunk.size());
@@ -82,6 +86,7 @@ LevelPool::getChunk(int readP, vec<Lit>& chunk)
         } else {
             chunk.growTo((endP - readP) + writeP);
             int j = 0;
+	    assert(readP == 0 || toInt(shared_clauses[readP]) >= 0); // the first literal indicates the ID of the node that shared the clause
             for (int i = readP; i < endP; ++i) {
                 assert(j < chunk.size());
                 chunk[j++] = shared_clauses[i];
@@ -96,6 +101,7 @@ LevelPool::getChunk(int readP, vec<Lit>& chunk)
     } else {
         chunk.growTo(writeP);
         int j = 0;
+	assert(writeP == 0 || toInt(shared_clauses[0]) > 0); // the first literal indicates the ID of the node that shared the clause
         for (int i = 0; i < writeP; ++i) {
             assert(j < chunk.size());
             chunk[j++] = shared_clauses[i];
