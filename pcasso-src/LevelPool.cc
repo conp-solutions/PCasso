@@ -1,5 +1,7 @@
 #include "LevelPool.h"
 
+#include <sstream>
+
 using namespace davide;
 using namespace std;
 using namespace Minisat;
@@ -17,7 +19,7 @@ LevelPool::LevelPool(int _max_size)
 bool LevelPool::add_shared(vec<Lit>& lits, unsigned int nodeID, bool disable_dupl_removal, bool disable_dupl_check)
 {
 
-    vec<Lit> temp;
+    vec<Lit> temp; // FIXME: replace with a write of node ID to first writable position
     temp.push(lit_Undef);
     for (int i = 0; i < lits.size(); i++) {
         temp.push(lits[i]);
@@ -26,6 +28,10 @@ bool LevelPool::add_shared(vec<Lit>& lits, unsigned int nodeID, bool disable_dup
     assert(temp[0] == lit_Undef);
 
     int i = 0;
+    
+    std::stringstream msg;
+    msg << "c LP node " << nodeID << " beging add_shared with writeP: " << writeP << " endP: " << endP << " and " << lits.size() << " lits" << endl;
+    std::cerr << msg.str();
 
     temp[0] = toLit(nodeID);
     
@@ -62,6 +68,10 @@ bool LevelPool::add_shared(vec<Lit>& lits, unsigned int nodeID, bool disable_dup
         }
         assert(endP > writeP);
     }
+    msg.str("");
+    msg << "c LP node " << nodeID << " end shared with writeP: " << writeP << " endP: " << endP << " and " << lits.size() << " lits" << endl;
+    std::cerr << msg.str();
+    
     return true;
 }
 void
