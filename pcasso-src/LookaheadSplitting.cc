@@ -1439,6 +1439,8 @@ jump:
                 bestVarIndex = i;
             }
         }
+    } else {
+        printf("empty list of best K\n");
     }
 
     if (bestVarIndex == var_Undef) {

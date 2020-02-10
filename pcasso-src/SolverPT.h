@@ -19,6 +19,9 @@
 
 #include "utils/Statistics-mt.h"
 
+// for the verifier
+#include <sys/types.h>
+
 namespace Pcasso
 {
 class SolverPT : public SplitterSolver
@@ -29,6 +32,60 @@ class SolverPT : public SplitterSolver
     /// file handle used
     fstream* clauses_file = 0;
 
+    /** to check whether clauses are entailed during search*/
+    class Verifier
+    {
+      vector<Lit> dummy;
+      vector< vector<Lit> > formula;
+    public:
+      /** add a clause to the base formula */
+      void addClause(const Clause& c)
+      {
+	dummy.clear();
+	for(int i = 0; i < c.size(); ++i ) dummy.push_back(c[i]);
+	formula.push_back(dummy);
+      }
+      
+      /** add a unit clause to the base formula */
+      void addClause(const Lit& l)
+      {
+	dummy.clear();
+	dummy.push_back(l);
+	formula.push_back(dummy);
+      }
+      
+      /** check whether adding the given clause is ok (c is entailed) */
+      bool verify(const vec<Lit>& c)
+      {
+	uint64_t pid = (uint64_t)getpid();
+	uint64_t tid = (uint64_t)pthread_self();
+	std::stringstream filename;
+	filename << "/tmp/tmp_" << pid << "_" << tid << ".cnf";
+	printf("open file %s\n", filename.str().c_str());
+	std::ofstream f(filename.str().c_str());
+	// add the formula to a file
+	for(int i = 0 ; i < formula.size(); ++i)
+	{
+	  f << formula[i] << " 0" << endl; 
+	}
+	// add the current clause to a file
+	for(int i = 0 ; i < c.size(); ++i )
+	  f << ~c[i] << " 0" << endl;
+	f.close();
+	
+	// solve the new formula, and check the return code for 20
+	int ret = system( (std::string("minisat ") + filename.str() + " &> /dev/null").c_str() );
+	printf("command returned with %d\n",ret);
+	if(!(WEXITSTATUS(ret) == 20))
+	  cerr << "c clause with failed verify step from level: " << c << endl;
+        return WEXITSTATUS(ret) == 20;
+      }
+      
+      bool initialized() const { return formula.size() > 0; }
+    };
+    
+    Verifier verifier;
+    
   public:
     SolverPT(CoreConfig& config);
     ~SolverPT();

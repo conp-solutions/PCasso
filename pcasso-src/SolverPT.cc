@@ -1517,6 +1517,11 @@ lbool SolverPT::search(int nof_conflicts)
             lbdQueue.push(nblevels);
             sumLBD += nblevels;
 
+	    if(verifier.initialized())
+	    {
+	      if(! verifier.verify(learnt_clause) )
+                assert(false && "leanred clause could not be verified");
+	    }
 
             cancelUntil(backtrack_level);
 
@@ -1649,6 +1654,15 @@ lbool SolverPT::solve_()
     lbool   status        = l_Undef;
     nbclausesbeforereduce = firstReduceDB;
 
+    /** initialize verifier */
+#warning make sure that gets compiled only during debugging
+#error control that this only happens in solve nodes, and add verification also to received clauses!
+#error add a debugging parameter
+    for(int i = 0 ; i < clauses.size(); ++ i )
+      verifier.addClause(ca[clauses[i]]);
+    for(int i = 0 ; i < trail.size(); ++ i )
+      verifier.addClause(trail[i]);
+    
     // Search:
     int curr_restarts = 0;
     while (status == l_Undef) {
