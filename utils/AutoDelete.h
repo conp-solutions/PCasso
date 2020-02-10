@@ -23,4 +23,13 @@ class MethodFree
     ~MethodFree() { free(pointer); pointer = 0; }   // also set pointer to 0!
 };
 
+template <class T>
+class MethodArrayFree
+{
+    T*& pointer;
+  public:
+    MethodArrayFree(T*& ptr) : pointer(ptr) {}
+    ~MethodArrayFree() { delete [] pointer; pointer = 0; }
+};
+
 #endif
