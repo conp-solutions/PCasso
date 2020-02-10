@@ -68,7 +68,7 @@ struct Lit {
     int     x;
 
     // Use this as a constructor:
-    friend Lit mkLit(Var var, bool sign = false);
+    friend Lit mkLit(Var var, bool sign);
 
     bool operator == (Lit p) const { return x == p.x; }
     bool operator != (Lit p) const { return x != p.x; }
@@ -78,7 +78,7 @@ struct Lit {
 };
 
 
-inline  Lit  mkLit(Var var, bool sign) { Lit p; p.x = var + var + (int)sign; return p; }
+inline  Lit  mkLit(Var var, bool sign=false) { Lit p; p.x = var + var + (int)sign; return p; }
 inline  Lit  operator ~(Lit p)              { Lit q; q.x = p.x ^ 1; return q; }
 inline  Lit  operator ^(Lit p, bool b)      { Lit q; q.x = p.x ^ (unsigned int)b; return q; }
 inline  bool sign(Lit p)              { return p.x & 1; }
@@ -474,7 +474,7 @@ class Clause
     bool isShared() {      return header.shared == 0 ? false : true;    }
     //setting the shared to true... means the clause is shared or coming from a shared pool
     void setShared() {        header.shared = 1;    }
-    void initShCleanDelay(unsigned i) {        i > 1 ? header.shCleanDelay = 1 : header.shCleanDelay = i;    }
+    void initShCleanDelay(unsigned i) {header.shCleanDelay = i > 1 ? 1 : i;    }
     void decShCleanDelay() {        if (header.shCleanDelay > 0)     header.shCleanDelay--;    }
     unsigned getShCleanDelay() {       return header.shCleanDelay;    }
     #endif
