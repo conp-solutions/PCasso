@@ -1267,6 +1267,7 @@ Master::parseFormula(string filename)
                     // if (clauses > 4000000)
                     //     S.eliminate(true);
                 } else {
+                    assert(false && "This should not happen");
                     fprintf(stderr, "PARSE ERROR! Unexpected char: %c\n", *stream), exit(3);
                 }
             } else if (*stream == 'c' || *stream == 'p') {

@@ -55,6 +55,7 @@ fi
 
 
 # some temporary files 
+mkdir -p $tmpDir
 undo=$tmpDir/undo_$$						# path to temporary file that stores cp3 undo information
 tmpCNF=$tmpDir/tmpCNF_$$				# path to temporary file that stores cp3 simplified formula
 model=$tmpDir/model_$$					# path to temporary file that model of the preprocessor (stdout)

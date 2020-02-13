@@ -199,7 +199,7 @@ Var SolverPT::newVar(bool sign, bool dvar, char type)
 {
     assert(varPT.size() == nVars());
     varPT.push(0);//adding PT level of the new variable
-    int v = nVars();
+    Var v = nVars();
     watches  .init(mkLit(v, false));
     watches  .init(mkLit(v, true));
 
@@ -222,6 +222,8 @@ Var SolverPT::newVar(bool sign, bool dvar, char type)
     permDiff  .resize(v + 1); // add space for the next variable
     trail    .capacity(v + 1);
     setDecisionVar(v, dvar);
+
+    return v;
 }
 
 void SolverPT::setLiteralPTLevel(const Lit& l, unsigned pt)
@@ -1128,7 +1130,7 @@ lbool SolverPT::search(int nof_conflicts)
                 pull_learnts(starts);
                 if (!ok) { return l_False; }
                 if (!simplify()) {
-                    printf("c last restart ## conflicts  :  %d %d \n", conflictC, decisionLevel());
+                    // fprintf(stderr, "c last restart ## conflicts  :  %d %d \n", conflictC, decisionLevel());
                     return l_False;
                 }
             }
@@ -1165,7 +1167,7 @@ lbool SolverPT::search(int nof_conflicts)
 
                 if (next == lit_Undef) {
 
-                    printf("c last restart ## conflicts  :  %d %d \n", conflictC, decisionLevel());
+                    // fprintf("c last restart ## conflicts  :  %d %d \n", conflictC, decisionLevel());
                     // Model found:
                     return l_True;
                 }
