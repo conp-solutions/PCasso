@@ -11,6 +11,7 @@
 
 #include "mtl/Sort.h"
 #include "mtl/Vec.h"
+#include "utils/AutoDelete.h"
 #include "core/SolverTypes.h"
 
 using namespace Pcasso;
@@ -156,7 +157,8 @@ lbool LookaheadSplitting::produceSplitting(vec<vec<vec<Lit>* >* > **splits, vec<
         triedVar.growTo(nVars(), 0);
         //int flip=0;
         //int depth=0;
-        vec<vec<vec<Lit>*>*> *validList = new vec<vec<vec<Lit>*>*>();;
+        vec<vec<vec<Lit>*>*> *validList = new vec<vec<vec<Lit>*>*>();
+        MethodDelete<vec<vec<vec<Lit>*>*> > mf_validList(validList);
         localValid = new vec<vec<Lit>* >();
 
         shrinkClauses();
@@ -1434,8 +1436,7 @@ jump:
         vec<VarScore> varScore;
         for (int j = 0; j < bestKList.size(); j++) {
             if (value(bestKList[j]) == l_Undef && !tabuList[bestKList[j]]) {
-                VarScore *vs = new VarScore(j, score[j]);
-                varScore.push(*vs);
+                varScore.push(VarScore(j, score[j]));
             }
         }
         if (varScore.size() > 0) {
