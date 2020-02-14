@@ -1447,7 +1447,7 @@ jump:
     Lit next;
 
     if (bestVarIndex != var_Undef) {
-        bool pol;
+        bool pol = false;
         int direction = opt_child_direction_priority;
         switch (direction) {
         case 0:

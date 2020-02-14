@@ -945,15 +945,14 @@ Master::splitInstance(void* data)
 
     vector< vector<Lit>* > validConstraints;
     // create a solver object
-    SplitterSolver* S;
+    SplitterSolver* S = 0;
     if (split_mode == 1) {
         S = new VSIDSSplitting(defaultSolverConfig);
         //((VSIDSSplitting *)S)->setTimeOut(split_timeout);
-    }
-    if (split_mode == 2) {
+    }else if (split_mode == 2) {
         S = new LookaheadSplitting(defaultSolverConfig);
         ((LookaheadSplitting *)S)->setTimeOut(split_timeout);
-    }
+    } else assert (false && "an existing splitting method has to be chosen");
     tData.solver = S;
     // setup the parameters
     S->verbosity = tData.master->param.verb;
@@ -1199,7 +1198,7 @@ Master::formula() const
     return originalFormula;
 }
 
-const unsigned int
+unsigned int
 Master::varCnt() const
 {
     return maxVar;

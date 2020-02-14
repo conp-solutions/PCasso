@@ -1485,7 +1485,7 @@ void SolverPT::pull_learnts(int curr_restarts)
             //Debug::PRINTLN("NOTE: Starting portfolio");
             i = tnode->getOnlyChildScenarioChildNode()->getPTLevel();
             if (shared_indeces.size() <= i) {
-                assert(1 + i - shared_indeces.size() >= 0);
+                assert(1 + i >= shared_indeces.size());
                 unsigned j = 1 + i - shared_indeces.size();
                 while (j > 0) {
                     shared_indeces.push_back(0);
