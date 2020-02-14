@@ -24,6 +24,15 @@ class MethodFree
 };
 
 template <class T>
+class MethodDelete
+{
+    T*& pointer;
+  public:
+    MethodDelete(T*& ptr) : pointer(ptr) {}
+    ~MethodDelete() { delete pointer; pointer = 0; }
+};
+
+template <class T>
 class MethodArrayFree
 {
     T*& pointer;
