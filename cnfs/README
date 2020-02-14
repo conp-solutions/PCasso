@@ -1,0 +1,13 @@
+This directory contains tooling to check the validity of the SAT solver. The
+scripts require picosat to be present. These scripts can be combined with the
+cnfuzz tools by Biere et.al.
+
+To check whether the solver works correctly on a given CNF, use:
+
+./toolCheck.sh ./pcasso.sh <input.cnf>
+
+As the solver is a parallel solver, reproducing bugs is difficult. The following
+command re-runs a call, until an expected buggy unsatisfiable result is showing
+up:
+
+./reproduce-error.sh <input.cnf>
