@@ -86,8 +86,12 @@ struct shareStruct {
     pthread_mutex_t* mutex;
     sem_t* wakeSem;
     shareStruct():
+        param(0),
         result(0),
-        threadnr(0)
+        threadnr(0),
+        printedAlready(0),
+        mutex(0),
+        wakeSem(0)
     {}
 };
 

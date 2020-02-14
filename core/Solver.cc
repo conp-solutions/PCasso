@@ -278,6 +278,15 @@ Solver::Solver(CoreConfig& _config) :
     , sizeChange(0)
     , lbdChange(0)
     , sendRatio(0)
+    , lastIndexRed(0)
+    , nbclausesbeforereduce(0)
+    , sumLBD(0)
+    , max_learnts(0)
+    , learntsize_adjust_confl(0)
+    , learntsize_adjust_cnt(0)
+#ifdef PCASSO
+    , pcassoClient(0)
+#endif
 {
     MYFLAG = 0;
     hstry[0] = lit_Undef; hstry[1] = lit_Undef; hstry[2] = lit_Undef; hstry[3] = lit_Undef; hstry[4] = lit_Undef; hstry[5] = lit_Undef;

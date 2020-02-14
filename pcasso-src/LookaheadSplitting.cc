@@ -904,10 +904,10 @@ void LookaheadSplitting::preselectionHeuristic()
         }
         for (int i = 1; i < nVars(); i++) {
             if (negHScore[i] > 0 && posHScore[i] > 0) {
-                VarScore *vs = new VarScore(i, negHScore[i]*posHScore[i]);
-                vs->var = i;
-                vs->score = log(negHScore[i]) + log(posHScore[i]);
-                varScore.push(*vs);
+                VarScore vs(i, negHScore[i]*posHScore[i]);
+                vs.var = i;
+                vs.score = log(negHScore[i]) + log(posHScore[i]);
+                varScore.push(vs);
             }
         }
         sort(varScore);
