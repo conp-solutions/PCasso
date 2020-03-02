@@ -1475,6 +1475,11 @@ jump:
         fprintf(stderr, "splitter: no variable picked by lookahead; redo with new preselection\n");
         if (bestKList.size() == 0) {
             next = pickBranchLit();
+            if (next == lit_Undef) {
+                if (checkSolution()) {
+                    return lit_Undef;
+                }
+            }
         } else {
             goto decLitNotFound;
         }
