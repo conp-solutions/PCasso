@@ -1472,7 +1472,7 @@ void EquivalenceElimination::processXORgate(CoprocessorData& data, Circuit::Gate
                     { const Lit tmp = lits[hit]; lits[hit] = lits[k]; lits[k] = tmp; hit++; pol = pol ^ sign(ol); break; }
                 if (hit != j + 1)
                     if (freeLit == lit_Undef) { freeLit = ol; }
-                    else { freeLit == lit_Error; break; }
+                    else { freeLit = lit_Error; break; }
             }
             if (freeLit == lit_Error) { continue; }  // these gates do not match!
 

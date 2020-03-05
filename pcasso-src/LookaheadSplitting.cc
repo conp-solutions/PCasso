@@ -11,6 +11,7 @@
 
 #include "mtl/Sort.h"
 #include "mtl/Vec.h"
+#include "utils/AutoDelete.h"
 #include "core/SolverTypes.h"
 
 using namespace Pcasso;
@@ -156,7 +157,8 @@ lbool LookaheadSplitting::produceSplitting(vec<vec<vec<Lit>* >* > **splits, vec<
         triedVar.growTo(nVars(), 0);
         //int flip=0;
         //int depth=0;
-        vec<vec<vec<Lit>*>*> *validList = new vec<vec<vec<Lit>*>*>();;
+        vec<vec<vec<Lit>*>*> *validList = new vec<vec<vec<Lit>*>*>();
+        MethodDelete<vec<vec<vec<Lit>*>*> > mf_validList(validList);
         localValid = new vec<vec<Lit>* >();
 
         shrinkClauses();
@@ -904,10 +906,10 @@ void LookaheadSplitting::preselectionHeuristic()
         }
         for (int i = 1; i < nVars(); i++) {
             if (negHScore[i] > 0 && posHScore[i] > 0) {
-                VarScore *vs = new VarScore(i, negHScore[i]*posHScore[i]);
-                vs->var = i;
-                vs->score = log(negHScore[i]) + log(posHScore[i]);
-                varScore.push(*vs);
+                VarScore vs(i, negHScore[i]*posHScore[i]);
+                vs.var = i;
+                vs.score = log(negHScore[i]) + log(posHScore[i]);
+                varScore.push(vs);
             }
         }
         sort(varScore);
@@ -1190,7 +1192,7 @@ decLitNotFound:
             sizePositiveLookahead = trail.size() - initTrailSize;
             for (int j = initTrailSize; j < trail.size(); j++) {
                 //fprintf(stderr, "Watcher size = %d\n", watches[trail[j]].size());
-                sizeWatcherPositiveLookahead += sign(trail[j]) ? watcherNegLitSize[i] : watcherPosLitSize[i];
+                sizeWatcherPositiveLookahead += sign(trail[j]) ? watcherNegLitSize[bestKList[i]] : watcherPosLitSize[bestKList[i]];
                 binClausePositiveLookahead += sign(trail[j]) ? numPosLitTerClause[var(trail[j])] : numNegLitTerClause[var(trail[j])];
             }
             //check if solution found
@@ -1265,7 +1267,7 @@ decLitNotFound:
                 }
                 sizeNegativeLookahead = trail.size() - initTrailSize;
                 for (int j = initTrailSize; j < trail.size(); j++) {
-                    sizeWatcherNegativeLookahead += sign(trail[j]) ? watcherNegLitSize[i] : watcherPosLitSize[i];
+                    sizeWatcherNegativeLookahead += sign(trail[j]) ? watcherNegLitSize[bestKList[i]] : watcherPosLitSize[bestKList[i]];
                     binClauseNegativeLookahead += sign(trail[j]) ? numPosLitTerClause[var(trail[j])] : numNegLitTerClause[var(trail[j])];
                 }
                 //check if to perform double lookahead
@@ -1434,8 +1436,7 @@ jump:
         vec<VarScore> varScore;
         for (int j = 0; j < bestKList.size(); j++) {
             if (value(bestKList[j]) == l_Undef && !tabuList[bestKList[j]]) {
-                VarScore *vs = new VarScore(j, score[j]);
-                varScore.push(*vs);
+                varScore.push(VarScore(j, score[j]));
             }
         }
         if (varScore.size() > 0) {
@@ -1447,7 +1448,7 @@ jump:
     Lit next;
 
     if (bestVarIndex != var_Undef) {
-        bool pol;
+        bool pol = false;
         int direction = opt_child_direction_priority;
         switch (direction) {
         case 0:
@@ -1474,6 +1475,11 @@ jump:
         fprintf(stderr, "splitter: no variable picked by lookahead; redo with new preselection\n");
         if (bestKList.size() == 0) {
             next = pickBranchLit();
+            if (next == lit_Undef) {
+                if (checkSolution()) {
+                    return lit_Undef;
+                }
+            }
         } else {
             goto decLitNotFound;
         }

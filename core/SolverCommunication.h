@@ -232,7 +232,7 @@ int Solver::updateSleep(vec< Lit >* toSend, bool multiUnits)
                 else if (value(c[0]) == l_False) {
                     ok = false; return 1;
                 }
-                c.mark();
+                c.mark(1);
                 ok = (propagate() == CRef_Undef);
                 if (!ok) {  // adding this clause failed?
                     cerr << "c adding received clause failed" << endl;
@@ -257,7 +257,7 @@ int Solver::updateSleep(vec< Lit >* toSend, bool multiUnits)
                         else if (value(c[0]) == l_False) {
                             ok = false; return 1;
                         }
-                        c.mark();
+                        c.mark(1);
                         ok = (propagate() == CRef_Undef);
                         if (!ok) { return 1; }
                     } else { // attach the clause, if its not a unit clause!

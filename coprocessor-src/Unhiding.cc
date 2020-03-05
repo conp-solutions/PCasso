@@ -293,6 +293,7 @@ bool Unhiding::unhideSimplify(bool borderIteration, bool& foundEE)
         if (config.opt_uhd_Debug > 3) { cerr << "c [UHD] work on [" << clRef << "]" << clause << " state ok? " << data.ok() << endl; }
 
         const uint32_t cs = clause.size();
+        assert(cs > 2 && "Can only process valid clauses here");
         Lit Splus  [cs];
         Lit Sminus [cs];
 

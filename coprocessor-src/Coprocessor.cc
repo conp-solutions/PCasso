@@ -1076,7 +1076,7 @@ lbool Preprocessor::inprocess()
         const bool wasDoingER = solver->getExtendedResolution();
 
 
-        if (config.opt_randInp) { data.randomized(); }
+        if (config.opt_randInp) { data.randomize(); }
         if (config.opt_inc_inp) { giveMoreSteps(); }
 
         lbool ret = l_Undef;

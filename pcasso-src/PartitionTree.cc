@@ -513,7 +513,7 @@ void TreeNode::checkOnlyChildScenarioChild()
     if (!onlyChildScenario) {
         unsigned solved = 0;
         TreeNode *child;
-        TreeNode *unsolvedChild;
+        TreeNode *unsolvedChild = 0;
         for (unsigned j = 0; j < childsCount(); j++) {
             child = getChild(j);
             if (child->getState() == unsat) {
@@ -528,6 +528,7 @@ void TreeNode::checkOnlyChildScenarioChild()
         }
     } else {
         TreeNode *child = onlyChildScenarioChildNode;
+	assert(onlyChildScenarioChildNode != 0 && "There should be a node related to the scenario");
         TreeNode *unsolvedChild = onlyChildScenarioChildNode;
         while (child->isOnlyChildScenario()) {
             child = child->getOnlyChildScenarioChildNode();

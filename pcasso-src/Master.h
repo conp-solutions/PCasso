@@ -185,7 +185,7 @@ class Master
     // return the formula for reading (for the threads)
     const vector< clause >& formula() const ;
     // return number of variables for reading
-    const unsigned int varCnt() const;
+    unsigned int varCnt() const;
 
     /** submits the model to the master
      *   NOTE: the model has to be complete and not only be the model of one of the nodes in the tree, not thread safe
