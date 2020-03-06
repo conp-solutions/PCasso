@@ -1466,6 +1466,7 @@ void SolverPT::push_learnts()
             }
 
 
+            assert(c.getPTLevel() >= i && "cannot share clause more upwards than its PT level allows");
             sharedSuccess = pool->add_shared(c_lits, tnode->id(), disable_dupl_removal, disable_dupl_check);
             fullPool = pool->isFull();
 
@@ -1552,7 +1553,7 @@ void SolverPT::pull_learnts(int curr_restarts)
                     }
                     pool->levelPoolLock.rLock();                 // Davide> START CRITICAL
                 }
-                int readP = shared_indeces[i];
+                volatile int readP = shared_indeces[i];
 
                 pool->getChunk(readP, chunk);
 
