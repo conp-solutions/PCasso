@@ -30,12 +30,13 @@ then
 fi
 test=0
 
+declare -i status=0
+
 while [ "$test" -lt "$limit" ]
 do
   rm -f $cnf; 
   ./cnfuzz $CNFUZZOPTIONS > $cnf
   # control whether algorithm should sleep
-#  sleep 0.02
   seed=`grep 'c seed' $cnf|head -1|awk '{print $NF}'`
   head="`awk '/p cnf /{print $3, $4}' $cnf`"
   printf "%d %16d          %6d    %6d               \r" "$i" "$seed" $head
@@ -53,7 +54,6 @@ do
   then
     if [ $bestcls -le $thiscls ]
     then
-#      echo "reject new bug with $thiscls clauses"
       continue
     fi
   fi
@@ -78,8 +78,12 @@ do
     25)
     ;;
   esac
+
+  status=1
+
   head="`awk '/p cnf /{print $3, $4}' $cnf`"
-  echo "($SECONDS s) [runcnfuzz] bug-$seed $head             with exit code $res                         "
+  echo "($SECONDS s) [runcnfuzz] bug-$seed $head             with exit code $res"
+  echo "($SECONDS s) To reproduce, run cnfuzz: ./cnfuzz $seed > reproduce.cnf"
   echo $seed >> $log
   echo "($SECONDS s) out"
   cat $out
@@ -104,14 +108,6 @@ do
   red=red-$seed.cnf
   bug=bug-$seed.cnf
   mv $cnf $bug
-  #if [ x"$qbf" = x ]
-  #then
-
-#  ./cnfdd $bug $red ./toolCheck.sh $prg 1>/dev/null 2>/dev/null
-
-  #else
-  #  qbfdd.py -v -v -o $red $bug $prg 1>/dev/null 2>/dev/null
-  #fi
 
   if [ -f "$red" ]; then
     head="`awk '/p cnf /{print $3, $4}' $red`"
@@ -123,3 +119,4 @@ done
 echo "($SECONDS s) "
 echo "($SECONDS s) did $test out of $limit tests"
 
+exit $status
