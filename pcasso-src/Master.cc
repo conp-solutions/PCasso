@@ -196,6 +196,7 @@ int Master::run()
     // check the state of the tree
     // solve the next node in the tree
     if (MSverbosity > 0) { fprintf(stderr, "M: start main loop\n"); }
+    int stuck = 0;
     while (!done) {
 
         int idles = 0;  // important, because this indicates that there can be done more in the next round!
@@ -208,12 +209,15 @@ int Master::run()
             if (threadData[i].s == unclean) {
 
                 // Davide> Free memory
-                if (threadData[i].result == 20 && stopUnsatChilds) {
+                if (threadData[i].result == 20) {
                     // The children are NOT running, so I can delete every pool
                     lock();
                     threadData[i].nodeToSolve->setState(TreeNode::unsat, true);
+                    // fprintf(stderr, "c root node state: %d\n", root.getState());
                     unlock();
-                    killUnsatChildren(i);
+                    if (stopUnsatChilds) {
+                        killUnsatChildren(i);
+                    }
                 }
 
                 uncleans++;
@@ -371,7 +375,13 @@ int Master::run()
                 for (; i < threads; ++i) {
                     if (threadData[i].s == splitting) { break; }  // TODO SHOULDN'T BE IDLE ?? DAVIDE>
                     if (threadData[i].s == working) { break; }  // do not stop if some worker is doing something
+                    if (threadData[i].s == unclean) { break; }  // do not stop if some worker is not cleaned up yet
                 }
+
+                // allow the solver 16 times reaching this before we actually stop working
+                stuck ++;
+                if (stuck < 16) { continue; }
+
                 // if there is a thread that is still doing something, we did not run out of work!
                 if (i == threads) {
                     fprintf(stderr, "\n***\n*** RUN OUT OF WORK - return unknown?\n***\n\n");
@@ -384,7 +394,9 @@ int Master::run()
                         else if (threadData[i].s == unclean) { uncleans++; }
                     }
 
-                    fprintf(stderr, "c idle: %d working: %d splitting: %d unclean: %d\n", idles, workers, splitters, uncleans);
+                    fprintf(stderr, "c (after %d iterations): idle: %d working: %d splitting: %d unclean: %d\n", stuck, idles, workers, splitters, uncleans);
+                    // for debugging purposes, stop here. we assume, there is a solution but nobody told us, so let's check
+                    assert(false && "this should not be reached");
 
                     exit(0);
                 }
@@ -871,7 +883,7 @@ Master::solveInstance(void* data)
     } else {
         // result of solver is "unknown"
         if (master.plainpart) { tData.nodeToSolve->setState(TreeNode::retry); }
-        else { tData.nodeToSolve->setState(TreeNode::unknown); }
+        else { if (tData.nodeToSolve->getState() == TreeNode::retry) tData.nodeToSolve->setState(TreeNode::unknown); }
 
         if (keepToplevelUnits > 0) {
             int toplevelVariables = 0;
@@ -933,7 +945,7 @@ Master::splitInstance(void* data)
     if (Portfolio && tData.nodeToSolve->getLevel() < PortfolioLevel) { // perform portfolio only until this level!
         master.lock(); // ********************* START CRITICAL ***********************
         childConstraints.push_back(new vector<vector<Lit>*>);
-        tData.nodeToSolve->setState(TreeNode::unknown);
+        if (tData.nodeToSolve->getState() == TreeNode::retry) { tData.nodeToSolve->setState(TreeNode::unknown); } // only modify, if it's retry
         tData.nodeToSolve->expand(childConstraints);
         master.addNode(tData.nodeToSolve->getChild(0));
         tData.result = ret;
@@ -1140,7 +1152,7 @@ Master::splitInstance(void* data)
         // shut down all threads that are running below that node (necessary?)
     } else {
         // simply set the node to the unknown state
-        tData.nodeToSolve->setState(TreeNode::unknown);
+        if (tData.nodeToSolve->getState() == TreeNode::retry) { tData.nodeToSolve->setState(TreeNode::unknown); }
         for (unsigned int i = 0; i < validConstraints.size(); i++) {
             tData.nodeToSolve->addNodeConstraint(validConstraints[i]);
         }

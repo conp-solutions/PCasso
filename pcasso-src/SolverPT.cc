@@ -1435,7 +1435,9 @@ void SolverPT::push_learnts()
     bool sharedSuccess = false;
     bool fullPool = false;
 
+    vec<Lit> c_lits;
     for (unsigned int i = 0; i < learnts_indeces.size(); i++) {
+        if(learnts_indeces[i].size() == 0) continue; // nothing to share for this level, skip it!
         davide::LevelPool* pool = previous_pools[i];
 
         if (pool == 0) { continue; }
@@ -1450,15 +1452,21 @@ void SolverPT::push_learnts()
             pool->levelPoolLock.wLock();
         }
         for (unsigned int j = 0; j < learnts_indeces[i].size(); j++) {
-            Clause& c = ca[learnts[learnts_indeces[i][j]]];
+            int lc_index = learnts_indeces[i][j];
+            if (lc_index >= learnts.size()) {
+                assert(lc_index < learnts.size() && "indexes to learned clauses to share have to be in bounds");
+                continue;
+            }
+            Clause& c = ca[learnts[lc_index]];
             c.setShared();
 
-            vec<Lit> c_lits;
+            c_lits.clear(); // memory consumption optimization
             for (unsigned j = 0; j < c.size(); j++) { //creating vector of literals present in the clause
                 c_lits.push(c[j]);
             }
 
 
+            assert(c.getPTLevel() >= i && "cannot share clause more upwards than its PT level allows");
             sharedSuccess = pool->add_shared(c_lits, tnode->id(), disable_dupl_removal, disable_dupl_check);
             fullPool = pool->isFull();
 
@@ -1545,7 +1553,7 @@ void SolverPT::pull_learnts(int curr_restarts)
                     }
                     pool->levelPoolLock.rLock();                 // Davide> START CRITICAL
                 }
-                int readP = shared_indeces[i];
+                volatile int readP = shared_indeces[i];
 
                 pool->getChunk(readP, chunk);
 
@@ -1772,6 +1780,10 @@ void SolverPT::reduceDB()
     // Keep clauses which seem to be usefull (their lbd was reduce during this sequence)
 
     int limit = learnts.size() / 2;
+
+    for (int i = 0; i < learnts_indeces.size(); ++i) {
+        learnts_indeces[i].clear();
+    }
 
     for (i = j = 0; i < learnts.size(); i++) {
         Clause& c = ca[learnts[i]];
