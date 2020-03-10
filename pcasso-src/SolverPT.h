@@ -153,6 +153,29 @@ class SolverPT : public SplitterSolver
 
     /// return a specifit literal from the trail
     Lit trailGet(const unsigned int index);
+
+
+    // LCM modifications
+    int performSimplificationNext;
+
+    uint64_t nbLCM, nbLitsLCM, nbConflLits, nbLCMattempts, nbLCMsuccess, npLCMimpDrop, nbRound1Lits, nbRound2Lits, nbLCMfalsified;
+    Clock LCMTime;
+
+    bool simplifyLCM(); // learned clause minimization style inprocessing inside the solver, based on vivificatoin
+
+    /** run all the simplification that is necessary for one lause
+     * Note: this method assumes the clause is detached before being called
+     * @param cr index of the clause to be processed (might be learned or original clause)
+     * @param LCMconfig 5x5 number of what to do in forward and backward iteration of LCM (3*5+5 seems to be strongest)
+     * @param fullySimplify allow to actually run vivification on that clause, otherwise, only falsified literals are removed
+     * @return true, if the clause reference should be kept. In case false is returned, the clause is already removed from the solver
+     */
+    bool simplifyClause_viviLCM(const CRef cr, int LCMconfig, bool fullySimplify = true);
+
+    int simplifyLearntLCM(Clause& c, int vivificationConfig); // simplify a non-watched clause, and perform vivification on it
+
+    void analyzeFinal(const CRef& conflictingClause, vec< Lit >& out_conflict, const Lit otherLit = lit_Undef);
+
   private:
     vec<unsigned> varPT; //storing the PT level of each variable
     //CMap<unsigned> clausePT; //storing the PT level of each clause
