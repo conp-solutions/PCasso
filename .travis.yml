@@ -6,6 +6,7 @@ sudo: required
 before_install:
   - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
   - sudo apt-get update -q
+  - sudo apt-get install picosat
   - sudo apt-get remove gcc g++
   - sudo apt-get install g++-7 gcc-7 -y
   - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 60 --slave /usr/bin/g++ g++ /usr/bin/g++-7
@@ -13,6 +14,6 @@ before_install:
   - sudo update-alternatives --install /usr/bin/gcc-ranlib gcc-ranlib /usr/bin/gcc-ranlib-7 60
   - sudo update-alternatives --install /usr/bin/x86_64-linux-gnu-gcc x86_64-linux-gnu-gcc /usr/bin/x86_64-linux-gnu-gcc-7 60 --slave /usr/bin/x86_64-linux-gnu-g++ x86_64-linux-gnu-g++ /usr/bin/x86_64-linux-gnu-g++-7
 
-# run the typical ci checks, for now, compile
+# run the typical ci checks, for now, compile, and fuzz-test
 script:
-  - make pcassod pcassoRS -j $(nproc)
+  - ./scripts/ci.sh

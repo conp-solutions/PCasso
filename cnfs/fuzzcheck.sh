@@ -83,7 +83,7 @@ do
 
   head="`awk '/p cnf /{print $3, $4}' $cnf`"
   echo "($SECONDS s) [runcnfuzz] bug-$seed $head             with exit code $res"
-  echo "($SECONDS s) To reproduce, run cnfuzz: ./cnfuzz $seed > reproduce.cnf"
+  echo "($SECONDS s) To reproduce, run cnfuzz: './cnfuzz $seed > reproduce.cnf' and '$prg reproduce.cnf'"
   echo $seed >> $log
   echo "($SECONDS s) out"
   cat $out
