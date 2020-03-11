@@ -1300,7 +1300,9 @@ bool SolverPT::simplifyLCM()
     assert(qhead == trail.size() && "make sure we are in a good state before LCM");
 
     // make sure we do not miss something
+    assert(decisionLevel() == 0 && "run learned clause minimization only on level 0");
     if (!ok || propagate() != CRef_Undef) {
+        lastLevel = curPTLevel;
         return ok = false;
     }
 
