@@ -488,7 +488,8 @@ lbool LookaheadSplitting::produceSplitting(vec<vec<vec<Lit>* >* > **splits, vec<
                     } else {
                         cancelUntil(decisionLevel() - 1);
                         next = ~(*decList)[decisionLevel()];
-                        uncheckedEnqueue(next);
+                        if(value(next) != l_Undef) uncheckedEnqueue(next);
+                        assert(value(next) != l_False && "tested this case earlier");
                         //enqueue(next);
                         decList->pop();
                         vec<Lit> *c = new vec<Lit>();
@@ -994,7 +995,9 @@ bool LookaheadSplitting::lookahead(Lit p, vec<Lit>& lookaheadTrail, vec<Lit>& un
             unsigned nbscore;
             learnt_clause.clear(); otfssClauses.clear(); extraInfo = 0; // reset global structures
 
-            int ret = analyze(confl, learnt_clause, backtrack_level, nbscore, otfssClauses, extraInfo);
+            int ret = 0;
+            if(ca[confl].size() == 1) learnt_clause.push( ca[confl][0]);
+            else ret = analyze(confl, learnt_clause, backtrack_level, nbscore, otfssClauses, extraInfo);
             assert(ret == 0 && "can handle only usually learnt clauses");
             if (ret != 0) { _exit(1); }  // abort, if learning is set up wrong
 
@@ -1002,6 +1005,8 @@ bool LookaheadSplitting::lookahead(Lit p, vec<Lit>& lookaheadTrail, vec<Lit>& un
             if (learnt_clause[0] != ~p && value(learnt_clause[0]) == l_Undef) {
                 if (learnt_clause.size() == 1) {
                     //fprintf(stderr, "splitter: Unit Clause Learnt at level %d\n", decisionLevel());
+                    cancelUntil(0); // units need to go to level 0
+                    assert(decisionLevel() == 0 && "units should only be added at level 0!");
                     uncheckedEnqueue(learnt_clause[0]);
                     //CRef cr = ca.alloc(learnt_clause, true);
                     units.push(learnt_clause[0]);          //saving unit learnt clauses
@@ -1216,7 +1221,7 @@ decLitNotFound:
                         cancelUntil(decLev);
                         score[i] = 0;
                         if (opt_failed_literals > 0) {
-                            uncheckedEnqueue(~p);
+                            if(value(~p) == l_Undef) uncheckedEnqueue(~p);
 //                            enqueue(~p);
                             failedLiterals.push(p);
                         }
