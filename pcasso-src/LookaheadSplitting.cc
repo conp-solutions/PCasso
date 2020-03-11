@@ -698,7 +698,7 @@ void LookaheadSplitting::shrinkClauses()
         for (int i = 0, j = 0, k = 0; i < clauses.size(); i++) {
             Clause& c = ca[clauses[i]];
             for (j = 0, k = 0; j < c.size(); j++) {
-                if (value(c[j]) != l_False) {
+                if (value(c[j]) != l_False || j < 2) { // do not drop watched literals!
                     c[k] = c[j];
                     k++;
                     if (opt_pure_lit > 0) {
