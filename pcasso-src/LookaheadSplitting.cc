@@ -1005,9 +1005,10 @@ bool LookaheadSplitting::lookahead(Lit p, vec<Lit>& lookaheadTrail, vec<Lit>& un
             if (learnt_clause[0] != ~p && value(learnt_clause[0]) == l_Undef) {
                 if (learnt_clause.size() == 1) {
                     //fprintf(stderr, "splitter: Unit Clause Learnt at level %d\n", decisionLevel());
-                    cancelUntil(0); // units need to go to level 0
-                    assert(decisionLevel() == 0 && "units should only be added at level 0!");
-                    uncheckedEnqueue(learnt_clause[0]);
+                    // make sure we do not break something by canceling levels unexpectedly
+                    // cancelUntil(0); // units need to go to level 0
+                    // assert(decisionLevel() == 0 && "units should only be added at level 0!");
+                    // uncheckedEnqueue(learnt_clause[0]);
                     //CRef cr = ca.alloc(learnt_clause, true);
                     units.push(learnt_clause[0]);          //saving unit learnt clauses
                 } else { /*if(learnt_clause.size() <= 2)*/
