@@ -215,7 +215,7 @@ int Master::run()
                     // The children are NOT running, so I can delete every pool
                     lock();
                     threadData[i].nodeToSolve->setState(TreeNode::unsat, true);
-                    // fprintf(stderr, "c root node state: %d\n", root.getState());
+                    if(MSverbosity) fprintf(stderr, "c root node state: %d\n", root.getState());
                     unlock();
                     if (stopUnsatChilds) {
                         killUnsatChildren(i);
@@ -275,7 +275,9 @@ int Master::run()
 
             // check the tree for UNSAT/SAT
             if (MSverbosity > 1) { fprintf(stderr, "M: CHECK TREE\n"); }
+            if(MSverbosity) fprintf(stderr, "c root node state pre-eval: %d\n", root.getState());
             root.evaluate(*this);
+            if(MSverbosity) fprintf(stderr, "c root node state post eval: %d\n", root.getState());
             if (root.getState() == TreeNode::unsat) {
                 // assign the according solution
                 solution = 20;
