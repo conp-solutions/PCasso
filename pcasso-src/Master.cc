@@ -76,6 +76,8 @@ static BoolOption    Portfolio("SPLITTER", "portfolio",  "Portfolio mode.\n", fa
 static Int64Option   PortfolioLevel("SPLITTER", "portfolioL", "Perform Portfolio until specified level\n", 0, Int64Range(0, INT64_MAX));     // depends on option above!
 static BoolOption    UseHardwareCores("SPLITTER", "usehw",  "Use Hardware, pin threads to cores\n", false);
 
+// to supress unsound behavior wrt UNSAT answers
+static BoolOption    opt_sat_only("MAIN", "sat-only", "In case the solver answers 'UNSATISFIABLE', print a warning and turn it into 'UNKNOWN'", false);
 
 static vector<unsigned short int> hardwareCores; // set of available hardware cores
 
@@ -438,6 +440,13 @@ int Master::run()
 
     assert(model != 0 || solution != 10);
 
+    // handle case where we want to suppress UNSAT answer
+    if(opt_sat_only && solution == 20) {
+        fprintf(stdout, "c WARNING: rejecting s UNSATISFIABLE as requested by command line\n");
+        if (res != NULL) fprintf(res, "c WARNING: rejecting s UNSATISFIABLE as requested by command line\n");
+        solution = 0;
+    }
+
     if (printModel) {
 
         if (res != NULL) { fprintf(stderr, "c write model to file\n"); }
@@ -494,7 +503,7 @@ int Master::run()
             if (res != NULL) { fprintf(res, "s UNSATISFIABLE\n"); }
             fprintf(stdout, "s UNSATISFIABLE\n");
         } else {
-            fprintf(stdout, "s INDETERMINATE\n");
+            fprintf(stdout, "s UNKNOWN\n");
 
         }
 
