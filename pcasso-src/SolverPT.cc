@@ -2037,7 +2037,10 @@ bool SolverPT::addSharedLearnt(vec<Lit>& ps, unsigned int pt_level)
                 uncheckedEnqueue(ps[0], CRef_Undef, pt_level); // Davide> attach pt_level info
                 level0UnitsIndex++; //need not to share this unit as it is already coming from a shared pool, thats why we are increasing the index of level0 units to be shared
                 if (!disable_stats && prevDecLevel > 0) { localStat.changeI(n_tot_forced_restarts_ID, 1); }
-                return ok = (propagate() == CRef_Undef); // FIXME Davide> Changed
+                if (propagate() != CRef_Undef){
+                    lastLevel = pt_level; // store PT level for failure
+                    return ok = false;
+                } else return true;
             }
         } // else, we already have that unit clause!
     } else {
