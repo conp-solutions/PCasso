@@ -1130,6 +1130,7 @@ int SolverPT::simplifyLearntLCM(Clause& c, int vivificationConfig)
                 assert(c[j - 1] == impliedLit && c.size() >= j && "until here, the position of impliedLit should be fixed");
                 c[j - 1] = c.last(); // drop the literal "impliedLit" from the clause
                 c.pop();
+                modified = true;
                 npLCMimpDrop ++;
             }
             conflict.clear();
@@ -1152,7 +1153,7 @@ int SolverPT::simplifyLearntLCM(Clause& c, int vivificationConfig)
             if (nblevels < c.lbd()) {
                 c.setLBD(nblevels);
             }
-            minimized = true;
+            minimized = true; modified = true;
         }
         cancelUntil(0);
 
@@ -1193,6 +1194,7 @@ bool SolverPT::simplifyClause_viviLCM(const CRef cr, int LCMconfig, bool fullySi
                 }
             }
             if (!sat) {
+                unsigned int newPTLevel = c.getPTLevel();
                 for (i = 2; i < c.size(); i++) {
                     if (value(c[i]) != l_False) {
                         c[j++] = c[i]; // TODO FIXME: has to end up in drat proof!
@@ -1201,9 +1203,11 @@ bool SolverPT::simplifyClause_viviLCM(const CRef cr, int LCMconfig, bool fullySi
                             break;
                         }
                     } else {
+                        newPTLevel = newPTLevel > getLiteralPTLevel(c[i]) ? newPTLevel : getLiteralPTLevel(c[i]);
                         ;
                     }
                 }
+                if(i!=j) c.setPTLevel(newPTLevel); // update level based on literals that have been dropped
                 nbLCMfalsified += (i - j);
                 c.shrink(i - j);
                 // set worst case PT level, as we currently do not have a good way to track the actual level
