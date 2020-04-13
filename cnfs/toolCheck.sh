@@ -15,6 +15,13 @@ then
 	exit 124
 fi
 
+# we want to see the failure, hence, print the output
+if [ "$status" -eq 134 ]
+then
+    cat /tmp/verify2_$$.cnf 1>&2
+    exit 134
+fi
+
 # cat /tmp/verify.cnf
 if [ "$status" -eq "10" ]
 then
