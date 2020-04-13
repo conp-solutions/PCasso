@@ -42,7 +42,7 @@ simplifier="$DIR/coprocessor"
 #
 file=$1				# first argument is CNF instance to be solved
 shift 1
-tmpDir=$2			# directory to write the temporary files to
+tmpDir=$1			# directory to write the temporary files to
 shift 1											# reduce the parameters, removed the very first one. remaining $@ parameters are arguments
 
 # in case no tmpDir has been specified, create one and trap for deletion on exit

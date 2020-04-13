@@ -167,13 +167,15 @@ class Clause
         unsigned has_extra : 1;
         unsigned reloced   : 1;
         #ifndef PCASSO
-        unsigned lbd       : 24;
+        unsigned lbd       : 23;
+        unsigned lcm_simplified : 1;
         unsigned canbedel  : 1;
         unsigned can_subsume : 1;
         unsigned can_strengthen : 1;
         unsigned size      : 32;
         #else
-        unsigned lbd       : 20;
+        unsigned lbd       : 19;
+        unsigned lcm_simplified : 1;
         unsigned canbedel  : 1;
         unsigned can_subsume : 1;
         unsigned can_strengthen : 1;
@@ -196,6 +198,7 @@ class Clause
             has_extra = rhs.has_extra;
             reloced = rhs.reloced;
             lbd = rhs.lbd;
+            lcm_simplified = rhs.lcm_simplified;
             canbedel = rhs.canbedel;
             can_subsume = rhs.can_subsume;
             can_strengthen = rhs.can_strengthen;
@@ -218,6 +221,7 @@ class Clause
             has_extra = rhs.has_extra;
             reloced = rhs.reloced;
             lbd = rhs.lbd;
+            lcm_simplified = rhs.lcm_simplified;
             canbedel = rhs.canbedel;
             can_subsume = rhs.can_subsume;
             can_strengthen = rhs.can_strengthen;
@@ -252,7 +256,8 @@ class Clause
         #ifdef CLS_EXTRA_INFO
         header.extra_info = 0
         #endif
-                            header.lbd = 0;
+        header.lbd = 0;
+        header.lcm_simplified = 0;
         header.canbedel = 1;
         header.can_subsume = 1;
         header.can_strengthen = 1;
@@ -304,6 +309,13 @@ class Clause
         }
         data[header.size].abs = abstraction;
     }
+
+    bool wasLcmSimplified() const { return header.lcm_simplified; }
+    void setLcmSimplified() { header.lcm_simplified = 1; }
+
+    /// reverse the order of the literals in the clause. take care when the clause is currently watched!
+    void         reverse() { int i = 0, j = size() - 1; while (i < j) {const Lit tmp = data[i].lit; data[i].lit = data[j].lit; data[j].lit = tmp; ++i; --j;} }
+
 
     int          size()      const   { return header.size; }
     void         shrink(int i)         { assert(i <= size()); if (header.has_extra) data[header.size - i] = data[header.size]; header.size -= i; }
@@ -954,7 +966,7 @@ class MarkArray
 
   public:
     MarkArray():
-        step(0)
+        step(1)
     {}
 
     ~MarkArray()
@@ -965,7 +977,7 @@ class MarkArray
     void destroy()
     {
         vector<uint32_t>().swap(array);
-        step = 0;
+        step = 1;
     }
 
     void create(const uint32_t newSize)
@@ -1002,7 +1014,7 @@ class MarkArray
     void reset()
     {
         memset(&(array[0]), 0, sizeof(uint32_t) * array.size());
-        step = 0;
+        step = 1;
     }
 
     /** give number of next step. if value becomes critical, array will be reset

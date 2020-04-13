@@ -16,3 +16,5 @@ depend.mk
 
 # astyle orig files
 *.orig
+cov-int
+infer-out

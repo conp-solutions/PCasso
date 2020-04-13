@@ -337,6 +337,8 @@ lbool LookaheadSplitting::produceSplitting(vec<vec<vec<Lit>* >* > **splits, vec<
                 } else if (next == lit_Undef) {
                     if (checkSolution()) {
                         return l_True;
+                    } else {
+                        assert(false && "this case should be handled, a split is required");
                     }
                 }
 
@@ -486,7 +488,8 @@ lbool LookaheadSplitting::produceSplitting(vec<vec<vec<Lit>* >* > **splits, vec<
                     } else {
                         cancelUntil(decisionLevel() - 1);
                         next = ~(*decList)[decisionLevel()];
-                        uncheckedEnqueue(next);
+                        if(value(next) != l_Undef) uncheckedEnqueue(next);
+                        assert(value(next) != l_False && "tested this case earlier");
                         //enqueue(next);
                         decList->pop();
                         vec<Lit> *c = new vec<Lit>();
@@ -509,6 +512,8 @@ lbool LookaheadSplitting::produceSplitting(vec<vec<vec<Lit>* >* > **splits, vec<
                     if (next == lit_Undef) {
                         if (checkSolution()) {
                             return l_True;
+                        } else {
+                            assert(false && "this case should be handled, a split is required");
                         }
                     }
                     if (decisionLevel() == 0 && splitting->size() == 0) {
@@ -693,7 +698,7 @@ void LookaheadSplitting::shrinkClauses()
         for (int i = 0, j = 0, k = 0; i < clauses.size(); i++) {
             Clause& c = ca[clauses[i]];
             for (j = 0, k = 0; j < c.size(); j++) {
-                if (value(c[j]) != l_False) {
+                if (value(c[j]) != l_False || j < 2) { // do not drop watched literals!
                     c[k] = c[j];
                     k++;
                     if (opt_pure_lit > 0) {
@@ -990,7 +995,9 @@ bool LookaheadSplitting::lookahead(Lit p, vec<Lit>& lookaheadTrail, vec<Lit>& un
             unsigned nbscore;
             learnt_clause.clear(); otfssClauses.clear(); extraInfo = 0; // reset global structures
 
-            int ret = analyze(confl, learnt_clause, backtrack_level, nbscore, otfssClauses, extraInfo);
+            int ret = 0;
+            if(ca[confl].size() == 1) learnt_clause.push( ca[confl][0]);
+            else ret = analyze(confl, learnt_clause, backtrack_level, nbscore, otfssClauses, extraInfo);
             assert(ret == 0 && "can handle only usually learnt clauses");
             if (ret != 0) { _exit(1); }  // abort, if learning is set up wrong
 
@@ -998,7 +1005,10 @@ bool LookaheadSplitting::lookahead(Lit p, vec<Lit>& lookaheadTrail, vec<Lit>& un
             if (learnt_clause[0] != ~p && value(learnt_clause[0]) == l_Undef) {
                 if (learnt_clause.size() == 1) {
                     //fprintf(stderr, "splitter: Unit Clause Learnt at level %d\n", decisionLevel());
-                    uncheckedEnqueue(learnt_clause[0]);
+                    // make sure we do not break something by canceling levels unexpectedly
+                    // cancelUntil(0); // units need to go to level 0
+                    // assert(decisionLevel() == 0 && "units should only be added at level 0!");
+                    // uncheckedEnqueue(learnt_clause[0]);
                     //CRef cr = ca.alloc(learnt_clause, true);
                     units.push(learnt_clause[0]);          //saving unit learnt clauses
                 } else { /*if(learnt_clause.size() <= 2)*/
@@ -1192,8 +1202,9 @@ decLitNotFound:
             sizePositiveLookahead = trail.size() - initTrailSize;
             for (int j = initTrailSize; j < trail.size(); j++) {
                 //fprintf(stderr, "Watcher size = %d\n", watches[trail[j]].size());
-                sizeWatcherPositiveLookahead += sign(trail[j]) ? watcherNegLitSize[bestKList[i]] : watcherPosLitSize[bestKList[i]];
-                binClausePositiveLookahead += sign(trail[j]) ? numPosLitTerClause[var(trail[j])] : numNegLitTerClause[var(trail[j])];
+                const Var v = var(trail[j]);
+                sizeWatcherPositiveLookahead += sign(trail[j]) ? watcherNegLitSize[v] : watcherPosLitSize[v];
+                binClausePositiveLookahead += sign(trail[j]) ? numPosLitTerClause[v] : numNegLitTerClause[v];
             }
             //check if solution found
             if (checkSolution()) {
@@ -1211,7 +1222,7 @@ decLitNotFound:
                         cancelUntil(decLev);
                         score[i] = 0;
                         if (opt_failed_literals > 0) {
-                            uncheckedEnqueue(~p);
+                            if(value(~p) == l_Undef) uncheckedEnqueue(~p);
 //                            enqueue(~p);
                             failedLiterals.push(p);
                         }
@@ -1267,8 +1278,9 @@ decLitNotFound:
                 }
                 sizeNegativeLookahead = trail.size() - initTrailSize;
                 for (int j = initTrailSize; j < trail.size(); j++) {
-                    sizeWatcherNegativeLookahead += sign(trail[j]) ? watcherNegLitSize[bestKList[i]] : watcherPosLitSize[bestKList[i]];
-                    binClauseNegativeLookahead += sign(trail[j]) ? numPosLitTerClause[var(trail[j])] : numNegLitTerClause[var(trail[j])];
+                    const Var v = var(trail[j]);
+                    sizeWatcherNegativeLookahead += sign(trail[j]) ? watcherNegLitSize[v] : watcherPosLitSize[v];
+                    binClauseNegativeLookahead += sign(trail[j]) ? numPosLitTerClause[v] : numNegLitTerClause[v];
                 }
                 //check if to perform double lookahead
                 if (opt_double_lookahead) {
@@ -1425,10 +1437,12 @@ decLitNotFound:
 jump:
     cancelUntil(decLev);
 
-    for (int i = 0; i < score.size(); i++) {
-        if (score[i] > 0 && score[i] > bestVarScore && value(bestKList[i]) == l_Undef) {
-            bestVarScore = score[i];
-            bestVarIndex = i;
+    if (bestKList.size() > 0) {
+        for (int i = 0; i < score.size(); i++) {
+            if (score[i] > 0 && score[i] > bestVarScore && value(bestKList[i]) == l_Undef) {
+                bestVarScore = score[i];
+                bestVarIndex = i;
+            }
         }
     }
 
@@ -1445,7 +1459,7 @@ jump:
         }
     }
 
-    Lit next;
+    Lit next = lit_Undef;
 
     if (bestVarIndex != var_Undef) {
         bool pol = false;
@@ -1579,7 +1593,7 @@ jump:
     *///if(opt_var_eq>0)
     //fprintf(stderr, "splitter: Var Equivalence \t\t\t = %d \n", varEq.size()/2);
     //fprintf(stderr, "splitter: Best Var Index = %d\n",bestVarIndex);
-    if (opt_tabu) {
+    if (opt_tabu && next != lit_Undef) {
         tabuList[var(next)] = true;
     }
 
