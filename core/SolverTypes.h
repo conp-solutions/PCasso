@@ -966,7 +966,7 @@ class MarkArray
 
   public:
     MarkArray():
-        step(0)
+        step(1)
     {}
 
     ~MarkArray()
@@ -977,7 +977,7 @@ class MarkArray
     void destroy()
     {
         vector<uint32_t>().swap(array);
-        step = 0;
+        step = 1;
     }
 
     void create(const uint32_t newSize)
@@ -1014,7 +1014,7 @@ class MarkArray
     void reset()
     {
         memset(&(array[0]), 0, sizeof(uint32_t) * array.size());
-        step = 0;
+        step = 1;
     }
 
     /** give number of next step. if value becomes critical, array will be reset
