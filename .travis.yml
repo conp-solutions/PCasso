@@ -3,6 +3,25 @@ dist: trusty
 compiler: g++
 sudo: required
 
+env:
+  global:
+   # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
+   #   via the "travis encrypt" command using the project repo's public key
+   - secure: "nLKakz1UQ2REOi5C+8Lb1Yyrl0P7AhHWvgo2NOJf/RmPjzM2SbjLUTyV2doZhHKyTlLP0/YThXSvrwnVfmC+vRDuMQ35y+/mKpTZEt2AnYd32On1mBv5XAu3bI3xVOYNGEo40O9No78J+8Rf0PIcU//VZidpLz6dVK1sj4aWu8g345wje0Ie3CNo3c5mmSkVuWZCg9sD2Kf6bn2cq767bB8FcTY5tof4nj5D9iYWgWQXN2xyPBjDVRV4Fy/eeXMX4GCzSTf0+Zf0ZsGtUgonP90GTUAnjBOtezt1wfpHSsy0KFdwx4ASw4UAKIEtipCMPCe2SdnuAkVe6CB4y69HMzXY2H8upSUZ5leVgT/YOhq1MPXIJc46xDytz00Xu+hheMhgItBO2FcKFjNED/vQUjH1dm/LGQB5wEJp1hlG+0gJcHP4cGSqE4KLF13DKDXsvw1DX92sADLgNJM0TxCqCFd/WkUHhZmZYvQ7N3QOpMD7Ppr5JX+TBQK7tPHMyeVyYv3eJdQ4oN3okpmF52SHDnNzp82uX9Prb7TVcifyvs9wWSZA9d97fItZdl0Sf/IExwsLMkB/4oZwPTf8BzujESEdAuktvP1LorJNcb4edHBu/tjW2nLTYvTqUvuoYJN9kD85AeD6V2qpFeaJ12BC0mDpZTVaB8mdEAUEDzyRhac="
+
+before_install:
+  - echo -n | openssl s_client -connect https://scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
+
+addons:
+  coverity_scan:
+    project:
+      name: "conp-solutions/PCasso"
+      description: "Parallel SAT solver"
+    notification_email: nmanthey@conp-solutions.com
+    build_command_prepend: "true"
+    build_command: "make pcassod"
+    branch_pattern: master
+
 before_install:
   - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
   - sudo apt-get update -q
